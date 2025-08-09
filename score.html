@@ -24,6 +24,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gradient-to-br from-green-600 to-blue-600 min-h-screen p-4 mobile-landscape">
+    
+     <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a class="brand" href="index.html">My Site</a>
+            <button id="mobile-menu" class="menu-toggle" aria-label="Toggle menu">☰</button>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="score.html">Scores</a></li>
+            </ul>
+        </div>
+    </nav>
+    
     <!-- Pre-Match Screen -->
     <div id="preMatch" class="flex items-center justify-center min-h-screen">
         <div class="bg-white rounded-3xl shadow-2xl p-12 text-center max-w-md w-full">
@@ -540,6 +553,18 @@
                 }, 200);
             }
         });
+
+      // Navigation bar toggle & active link highlight
+        const menuBtn = document.getElementById('mobile-menu');
+        const navMenu = document.querySelector('.nav-menu');
+        menuBtn.addEventListener('click', () => navMenu.classList.toggle('active'));
+        document.querySelectorAll('.nav-menu a').forEach(a => a.addEventListener('click', () => navMenu.classList.remove('active')));
+        const currentFile = location.pathname.split('/').pop() || 'index.html';
+        document.querySelectorAll('.nav-menu a').forEach(a => {
+            if (a.getAttribute('href') === currentFile) a.classList.add('active');
+        });
+        
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96c4fa5187d9c231',t:'MTc1NDcxODY0Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
