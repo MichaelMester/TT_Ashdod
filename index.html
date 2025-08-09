@@ -1,10 +1,46 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>Home Page</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Home — My Site</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Welcome to My Site</h1>
-  <p><a href="score.html">Go to Score Page</a></p>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <a class="brand" href="index.html">My Site</a>
+    <button id="mobile-menu" class="menu-toggle" aria-label="Toggle menu">☰</button>
+    <ul class="nav-menu">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="score.html">Scores</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="container">
+  <h1>Welcome</h1>
+  <p>This is the home page. Use the navigation to go to the Scores page.</p>
+</main>
+
+<script>
+  // menu toggle
+  const menuBtn = document.getElementById('mobile-menu');
+  const navMenu = document.querySelector('.nav-menu');
+  menuBtn.addEventListener('click', () => navMenu.classList.toggle('active'));
+
+  // close menu on link click (mobile)
+  document.querySelectorAll('.nav-menu a').forEach(a => a.addEventListener('click', () => {
+    navMenu.classList.remove('active');
+  }));
+
+  // highlight active link automatically
+  const currentFile = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('.nav-menu a').forEach(a => {
+    if (a.getAttribute('href') === currentFile) a.classList.add('active');
+  });
+</script>
+
 </body>
 </html>
