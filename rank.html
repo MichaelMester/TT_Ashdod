@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מועדון טנ"ש אשדוד - דירוג שחקנים</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 10px;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+            min-height: calc(100vh - 20px);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .club-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        .player-icon {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .player-icon-right {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .animated-player {
+            animation: playerSwing 2s ease-in-out infinite;
+        }
+        
+        .animated-player-right {
+            animation: playerSwingRight 2.5s ease-in-out infinite;
+        }
+        
+        .animated-ball {
+            animation: ballBounce 2s ease-in-out infinite;
+        }
+        
+        @keyframes playerSwing {
+            0% { transform: rotate(-10deg) translateY(0); }
+            25% { transform: rotate(5deg) translateY(-5px); }
+            50% { transform: rotate(15deg) translateY(-8px); }
+            75% { transform: rotate(-5deg) translateY(-3px); }
+            100% { transform: rotate(-10deg) translateY(0); }
+        }
+        
+        @keyframes playerSwingRight {
+            0% { transform: rotate(10deg) translateY(0); }
+            25% { transform: rotate(-5deg) translateY(-3px); }
+            50% { transform: rotate(-15deg) translateY(-6px); }
+            75% { transform: rotate(5deg) translateY(-4px); }
+            100% { transform: rotate(10deg) translateY(0); }
+        }
+        
+        @keyframes ballBounce {
+            0% { transform: translateY(0) scale(1); }
+            25% { transform: translateY(-12px) scale(0.9); }
+            50% { transform: translateY(-18px) scale(0.8); }
+            75% { transform: translateY(-8px) scale(0.9); }
+            100% { transform: translateY(0) scale(1); }
+        }
+        
+        @keyframes paddleBounce {
+            0%, 100% { transform: rotate(-5deg) translateY(0); }
+            50% { transform: rotate(5deg) translateY(-8px); }
+        }
+        
+        @keyframes ballFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(90deg); }
+            50% { transform: translateY(-5px) rotate(180deg); }
+            75% { transform: translateY(-15px) rotate(270deg); }
+        }
+        
+        .ping-pong-icon {
+            display: inline-block;
+            animation: paddleBounce 2s ease-in-out infinite;
+        }
+        
+        .ball-icon {
+            display: inline-block;
+            animation: ballFloat 3s ease-in-out infinite;
+        }
+        
+        .floating-elements {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .floating-paddle {
+            position: absolute;
+            font-size: 1.5rem;
+            opacity: 0.1;
+            animation: floatPaddle 15s linear infinite;
+        }
+        
+        @keyframes floatPaddle {
+            0% {
+                transform: translateX(-50px) translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.1;
+            }
+            90% {
+                opacity: 0.1;
+            }
+            100% {
+                transform: translateX(calc(100vw + 50px)) translateY(-50px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .refresh-icon {
+            transition: transform 0.5s ease;
+        }
+        
+        .refresh-btn.loading .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .stats-bar {
+            background: #e9ecef;
+            padding: 15px 20px;
+            text-align: center;
+            color: #495057;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .players-list {
+            padding: 20px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+        
+        .player-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .player-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .player-card.rank-1 {
+            border-color: #ffd700;
+            background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+        }
+        
+        .player-card.rank-2 {
+            border-color: #c0c0c0;
+            background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+        }
+        
+        .player-card.rank-3 {
+            border-color: #cd7f32;
+            background: linear-gradient(135deg, #fdf2e9 0%, #ffffff 100%);
+        }
+        
+        .player-rank {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+        
+        .player-rank.rank-1 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+        }
+        
+        .player-rank.rank-2 {
+            background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+            color: #333;
+        }
+        
+        .player-rank.rank-3 {
+            background: linear-gradient(135deg, #cd7f32 0%, #daa520 100%);
+            color: white;
+        }
+        
+        .player-info {
+            flex: 1;
+            margin: 0 15px;
+            text-align: center;
+        }
+        
+        .player-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            line-height: 1.3;
+        }
+        
+        .player-points {
+            font-size: 1.2rem;
+            color: #1e3c72;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        
+        .points-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 400;
+        }
+        
+        .trophy-medal {
+            font-size: 1.2rem;
+            margin-left: 8px;
+        }
+        
+        .loading-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9ecef;
+            border-top: 4px solid #1e3c72;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #dc3545;
+        }
+        
+        .error-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .club-title {
+                font-size: 1.2rem;
+            }
+            
+            .player-card {
+                padding: 10px 12px;
+                margin-bottom: 6px;
+            }
+            
+            .player-name {
+                font-size: 1rem;
+            }
+            
+            .player-rank {
+                width: 24px;
+                height: 24px;
+                font-size: 0.8rem;
+            }
+            
+            .player-info {
+                margin: 0 10px;
+            }
+            
+            .player-points {
+                font-size: 1.1rem;
+            }
+        }
+        
+        /* Smooth scrolling */
+        .players-list {
+            scroll-behavior: smooth;
+        }
+        
+        /* Custom scrollbar */
+        .players-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .players-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .players-list::-webkit-scrollbar-thumb {
+            background: #1e3c72;
+            border-radius: 3px;
+        }
+        
+        .players-list::-webkit-scrollbar-thumb:hover {
+            background: #2a5298;
+        }
+        
+        /* Player Profile Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .player-modal-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .player-modal-points {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .player-stats-summary {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .stat-summary-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-summary-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-summary-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .win-ratio {
+            color: #ffd700;
+        }
+        
+        .tabs-container {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 15px 10px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-button.active {
+            color: #1e3c72;
+            border-bottom-color: #1e3c72;
+            background: white;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .game-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-right: 4px solid #dee2e6;
+        }
+        
+        .game-card.win {
+            border-right-color: #28a745;
+            background: linear-gradient(135deg, #e8f5e8 0%, #f8f9fa 100%);
+        }
+        
+        .game-card.loss {
+            border-right-color: #dc3545;
+            background: linear-gradient(135deg, #f8e8e8 0%, #f8f9fa 100%);
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .game-date {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        
+        .game-result {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        
+        .game-result.win {
+            background: #28a745;
+            color: white;
+        }
+        
+        .game-result.loss {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .game-players {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+        }
+        
+        .player-score-section {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .player-name-in-game {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+        
+        .player-sets {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+        
+        .vs-divider {
+            font-size: 1.2rem;
+            margin: 0 10px;
+            opacity: 0.7;
+        }
+        
+        .game-score {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .points-change {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+        
+        .points-change.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .points-change.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .opponent-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .opponent-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .opponent-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+        
+        .win-rate {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .win-rate.good {
+            color: #28a745;
+        }
+        
+        .win-rate.average {
+            color: #ffc107;
+        }
+        
+        .win-rate.poor {
+            color: #dc3545;
+        }
+        
+        .loading-games {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .head-to-head-section {
+            margin: 10px 0;
+            padding: 8px 0;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .h2h-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        
+        .h2h-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .h2h-bar {
+            flex: 1;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .h2h-wins {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            min-width: 2px;
+        }
+        
+        .h2h-percentage {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #28a745;
+            min-width: 35px;
+            text-align: right;
+        }
+        
+        /* Mobile modal adjustments */
+        @media (max-width: 480px) {
+            .modal-overlay {
+                padding: 10px;
+            }
+            
+            .modal-content {
+                max-height: 95vh;
+            }
+            
+            .tab-button {
+                font-size: 0.9rem;
+                padding: 12px 8px;
+            }
+            
+            .tab-content {
+                padding: 15px;
+                max-height: 65vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="floating-elements">
+                <div class="floating-paddle" style="left: 10%; animation-delay: 0s;">🏓</div>
+                <div class="floating-paddle" style="left: 30%; animation-delay: 5s;">🏓</div>
+                <div class="floating-paddle" style="left: 50%; animation-delay: 10s;">🏓</div>
+                <div class="floating-paddle" style="left: 70%; animation-delay: 3s;">🏓</div>
+                <div class="floating-paddle" style="left: 90%; animation-delay: 8s;">🏓</div>
+            </div>
+            <div class="player-icon">
+                <span class="animated-player">🏓</span>
+            </div>
+            <div class="player-icon-right">
+                <span class="animated-player-right">🏓</span>
+            </div>
+            <h1 class="club-title">מועדון טנ"ש אשדוד</h1>
+        </div>
+        
+
+        
+        <div class="stats-bar" id="statsBar">
+            טוען נתונים...
+        </div>
+        
+        <div class="players-list" id="playersList">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <div>טוען רשימת שחקנים...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Profile Modal -->
+    <div class="modal-overlay" id="playerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="modal-close" onclick="closePlayerModal()">×</button>
+                <div class="player-modal-name" id="modalPlayerName">שם השחקן</div>
+                <div class="player-modal-points" id="modalPlayerPoints">0 נקודות</div>
+                <div class="player-stats-summary" id="playerStatsSummary">
+                    <div class="stat-summary-item">
+                        <div class="stat-summary-value" id="totalGames">-</div>
+                        <div class="stat-summary-label">סה"כ משחקים</div>
+                    </div>
+                    <div class="stat-summary-item">
+                        <div class="stat-summary-value" id="totalWins">-</div>
+                        <div class="stat-summary-label">ניצחונות <span class="ping-pong-icon">🏓</span></div>
+                    </div>
+                    <div class="stat-summary-item">
+                        <div class="stat-summary-value win-ratio" id="winRatio">-</div>
+                        <div class="stat-summary-label">אחוז הצלחה 🏆</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tabs-container">
+                <button class="tab-button active" onclick="switchTab('games')">משחקים אחרונים</button>
+                <button class="tab-button" onclick="switchTab('stats')">📊 סטטיסטיקה</button>
+            </div>
+            
+            <div class="tab-content active" id="gamesTab">
+                <div class="loading-games">
+                    <div class="loading-spinner"></div>
+                    <div>טוען משחקים...</div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="statsTab">
+                <div class="loading-games">
+                    <div class="loading-spinner"></div>
+                    <div>טוען סטטיסטיקות...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJ3Y_5_O0yeQC3cqTRfyTPdU6GWFSq7rM",
+            projectId: "ashdodtabletennis",
+            authDomain: "ashdodtabletennis.firebaseapp.com",
+            storageBucket: "ashdodtabletennis.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let isLoading = false;
+
+        function showLoading() {
+            const playersList = document.getElementById('playersList');
+            const statsBar = document.getElementById('statsBar');
+            
+            playersList.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <div>טוען רשימת שחקנים...</div>
+                </div>
+            `;
+            
+            statsBar.textContent = 'טוען נתונים...';
+        }
+
+        function hideLoading() {
+            // No refresh button to update anymore
+        }
+
+        function showError(message) {
+            const playersList = document.getElementById('playersList');
+            const statsBar = document.getElementById('statsBar');
+            
+            playersList.innerHTML = `
+                <div class="error-state">
+                    <div class="error-icon">⚠️</div>
+                    <div><strong>שגיאה בטעינת הנתונים</strong></div>
+                    <div style="margin-top: 10px; font-size: 0.9rem;">${message}</div>
+                </div>
+            `;
+            
+            statsBar.textContent = 'שגיאה בטעינת הנתונים';
+        }
+
+        function showEmpty() {
+            const playersList = document.getElementById('playersList');
+            const statsBar = document.getElementById('statsBar');
+            
+            playersList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <div><strong>אין שחקנים במערכת</strong></div>
+                    <div style="margin-top: 10px; font-size: 0.9rem;">לא נמצאו שחקנים עם נקודות</div>
+                </div>
+            `;
+            
+            statsBar.textContent = 'אין שחקנים במערכת';
+        }
+
+        function getTrophyMedal(rank) {
+            switch(rank) {
+                case 1: return '🥇';
+                case 2: return '🥈';
+                case 3: return '🥉';
+                default: return '';
+            }
+        }
+
+        function getRankClass(rank) {
+            switch(rank) {
+                case 1: return 'rank-1';
+                case 2: return 'rank-2';
+                case 3: return 'rank-3';
+                default: return '';
+            }
+        }
+
+        function displayPlayers(players) {
+            const playersList = document.getElementById('playersList');
+            const statsBar = document.getElementById('statsBar');
+            
+            if (players.length === 0) {
+                showEmpty();
+                return;
+            }
+            
+            // Sort players by points (descending)
+            players.sort((a, b) => (b.points || 0) - (a.points || 0));
+            
+            // Update stats bar
+            const totalPlayers = players.length;
+            const topScore = players[0]?.points || 0;
+            statsBar.innerHTML = `
+                <span>סה"כ שחקנים: <strong>${totalPlayers}</strong></span>
+                <span style="margin: 0 15px;">|</span>
+                <span>ניקוד מוביל: <strong>${topScore}</strong></span>
+            `;
+            
+            // Generate player cards
+            const playersHTML = players.map((player, index) => {
+                const rank = index + 1;
+                const rankClass = getRankClass(rank);
+                const trophyMedal = getTrophyMedal(rank);
+                const points = player.points || 0;
+                
+                return `
+                    <div class="player-card ${rankClass}" onclick="openPlayerModal('${player.id}', '${player.name}', ${points})" style="cursor: pointer;">
+                        <div class="player-rank ${getRankClass(rank)}">${rank}</div>
+                        <div class="player-info">
+                            <div class="player-name">${player.name}</div>
+                        </div>
+                        <div class="player-points">
+                            ${trophyMedal ? `<span class="trophy-medal">${trophyMedal}</span>` : ''}
+                            <span>${points}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            playersList.innerHTML = playersHTML;
+        }
+
+        async function loadPlayers() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            showLoading();
+            
+            try {
+                console.log('Loading players from Players2 collection...');
+                
+                const playersSnapshot = await db.collection('Players2').get();
+                console.log(`Found ${playersSnapshot.size} documents`);
+                
+                const players = [];
+                
+                playersSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    console.log('Player data:', data);
+                    
+                    const playerName = data.playerName;
+                    const playerPoints = data.playerPoints;
+                    
+                    // Only include players with valid names and active status
+                    const isActive = data.active === true;
+                    if (playerName && playerName.trim() !== '' && isActive) {
+                        players.push({
+                            id: doc.id,
+                            name: playerName.trim(),
+                            points: typeof playerPoints === 'number' ? playerPoints : 
+                                   typeof playerPoints === 'string' ? parseInt(playerPoints) || 0 : 0
+                        });
+                    }
+                });
+                
+                console.log('Processed players:', players);
+                displayPlayers(players);
+                
+            } catch (error) {
+                console.error('Error loading players:', error);
+                showError(error.message || 'שגיאה לא ידועה');
+            } finally {
+                isLoading = false;
+                hideLoading();
+            }
+        }
+
+        // Test Firebase connection and load players on page load
+        window.addEventListener('load', async () => {
+            try {
+                console.log('Testing Firebase connection...');
+                
+                // Test connection
+                const testSnapshot = await db.collection('Players2').limit(1).get();
+                console.log('Firebase connection successful');
+                
+                // Load players
+                await loadPlayers();
+                
+            } catch (error) {
+                console.error('Firebase connection error:', error);
+                showError('בעיה בחיבור למסד הנתונים');
+                hideLoading();
+            }
+        });
+
+        // Add pull-to-refresh functionality for mobile
+        let startY = 0;
+        let currentY = 0;
+        let pullDistance = 0;
+        const pullThreshold = 100;
+
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) {
+                startY = e.touches[0].clientY;
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (window.scrollY === 0 && startY > 0) {
+                currentY = e.touches[0].clientY;
+                pullDistance = currentY - startY;
+                
+                if (pullDistance > 0 && pullDistance < pullThreshold) {
+                    e.preventDefault();
+                }
+            }
+        });
+
+        document.addEventListener('touchend', () => {
+            if (pullDistance > pullThreshold && !isLoading) {
+                loadPlayers();
+            }
+            startY = 0;
+            currentY = 0;
+            pullDistance = 0;
+        });
+
+        // Player Modal Functions
+        let currentPlayer = null;
+
+        function openPlayerModal(playerId, playerName, playerPoints) {
+            currentPlayer = { id: playerId, name: playerName, points: playerPoints };
+            
+            document.getElementById('modalPlayerName').textContent = playerName;
+            document.getElementById('modalPlayerPoints').textContent = `${playerPoints} נקודות`;
+            
+            // Reset stats summary
+            document.getElementById('totalGames').textContent = '-';
+            document.getElementById('totalWins').textContent = '-';
+            document.getElementById('winRatio').textContent = '-';
+            
+            document.getElementById('playerModal').classList.add('active');
+            
+            // Reset tabs
+            switchTab('games');
+            
+            // Load player data
+            loadPlayerGames(playerName);
+            loadPlayerStats(playerId);
+        }
+
+        function closePlayerModal() {
+            document.getElementById('playerModal').classList.remove('active');
+            currentPlayer = null;
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'games') {
+                document.querySelector('.tab-button:first-child').classList.add('active');
+                document.getElementById('gamesTab').classList.add('active');
+            } else {
+                document.querySelector('.tab-button:last-child').classList.add('active');
+                document.getElementById('statsTab').classList.add('active');
+            }
+        }
+
+        async function loadPlayerGames(playerName) {
+            const gamesTab = document.getElementById('gamesTab');
+            
+            gamesTab.innerHTML = `
+                <div class="loading-games">
+                    <div class="loading-spinner"></div>
+                    <div>טוען משחקים... <span class="ball-icon">⚪</span></div>
+                </div>
+            `;
+            
+            try {
+                // Calculate date one month ago
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                const oneMonthAgoTimestamp = oneMonthAgo.getTime();
+                
+                console.log('Loading games for player:', playerName);
+                console.log('Date filter:', oneMonthAgo);
+                console.log('Timestamp filter:', oneMonthAgoTimestamp);
+                
+                // Query games collection
+                const gamesSnapshot = await db.collection('games')
+                    .orderBy('date', 'desc')
+                    .limit(100)
+                    .get();
+                
+                const playerGames = [];
+                
+                gamesSnapshot.forEach((doc) => {
+                    const gameData = doc.data();
+                    const gameDate = gameData.date;
+                    
+                    console.log('Game date raw:', gameDate, 'Type:', typeof gameDate);
+                    
+                    // Convert various date formats to Date object
+                    let gameDateObj;
+                    let gameDateTimestamp;
+                    
+                    if (typeof gameDate === 'number') {
+                        // Handle numeric timestamp (milliseconds or seconds)
+                        if (gameDate > 1000000000000) {
+                            // Milliseconds timestamp
+                            gameDateObj = new Date(gameDate);
+                            gameDateTimestamp = gameDate;
+                        } else {
+                            // Seconds timestamp
+                            gameDateObj = new Date(gameDate * 1000);
+                            gameDateTimestamp = gameDate * 1000;
+                        }
+                    } else if (typeof gameDate === 'string') {
+                        gameDateObj = new Date(gameDate);
+                        gameDateTimestamp = gameDateObj.getTime();
+                    } else if (gameDate && gameDate.toDate) {
+                        // Firestore timestamp
+                        gameDateObj = gameDate.toDate();
+                        gameDateTimestamp = gameDateObj.getTime();
+                    } else {
+                        console.log('Skipping game with invalid date:', gameDate);
+                        return; // Skip if date is invalid
+                    }
+                    
+                    // Check if date conversion was successful
+                    if (isNaN(gameDateObj.getTime())) {
+                        console.log('Skipping game with invalid date conversion:', gameDate);
+                        return;
+                    }
+                    
+                    console.log('Converted date:', gameDateObj, 'Timestamp:', gameDateTimestamp);
+                    
+                    // Check if game is within last month (but don't filter for now to see all games)
+                    // if (gameDateTimestamp < oneMonthAgoTimestamp) {
+                    //     return;
+                    // }
+                    
+                    const player1Name = gameData.player1Name;
+                    const player2Name = gameData.player2Name;
+                    const player1Sets = parseInt(gameData.player1Sets) || 0;
+                    const player2Sets = parseInt(gameData.player2Sets) || 0;
+                    const player1Amount = gameData.player1Amount || 0;
+                    const player2Amount = gameData.player2Amount || 0;
+                    
+                    let isPlayerInGame = false;
+                    let opponentName = '';
+                    let playerWon = false;
+                    let pointsChange = 0;
+                    let playerSets = 0;
+                    let opponentSets = 0;
+                    
+                    if (player1Name === playerName) {
+                        isPlayerInGame = true;
+                        opponentName = player2Name || 'יריב לא ידוע';
+                        playerWon = (player1Sets === 3);
+                        pointsChange = typeof player1Amount === 'number' ? player1Amount : parseInt(player1Amount) || 0;
+                        playerSets = player1Sets;
+                        opponentSets = player2Sets;
+                    } else if (player2Name === playerName) {
+                        isPlayerInGame = true;
+                        opponentName = player1Name || 'יריב לא ידוע';
+                        playerWon = (player2Sets === 3);
+                        pointsChange = typeof player2Amount === 'number' ? player2Amount : parseInt(player2Amount) || 0;
+                        playerSets = player2Sets;
+                        opponentSets = player1Sets;
+                    }
+                    
+                    if (isPlayerInGame) {
+                        playerGames.push({
+                            id: doc.id,
+                            date: gameDateObj,
+                            opponent: opponentName,
+                            won: playerWon,
+                            pointsChange: pointsChange,
+                            playerSets: playerSets,
+                            opponentSets: opponentSets
+                        });
+                    }
+                });
+                
+                console.log('Found games:', playerGames.length);
+                
+                if (playerGames.length === 0) {
+                    gamesTab.innerHTML = `
+                        <div class="no-data">
+                            <div style="font-size: 2rem; margin-bottom: 15px;"><span class="ping-pong-icon">🏓</span></div>
+                            <div><strong>אין משחקים בחודש האחרון</strong></div>
+                            <div style="margin-top: 10px; font-size: 0.9rem;">לא נמצאו משחקים עבור השחקן בחודש האחרון</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Sort by date (newest first)
+                playerGames.sort((a, b) => b.date - a.date);
+                
+                // Get opponent stats from player document
+                const playerDoc = await db.collection('Players2').doc(currentPlayer.id).get();
+                const playerData = playerDoc.exists ? playerDoc.data() : {};
+                
+                // Build opponent stats map from player document
+                const opponentStatsFromDoc = {};
+                let opponentIndex = 1;
+                
+                while (playerData[`playerOpponent${opponentIndex}Name`]) {
+                    const opponentName = playerData[`playerOpponent${opponentIndex}Name`];
+                    const opponentGames = playerData[`playerOpponent${opponentIndex}Games`] || 0;
+                    const opponentWins = playerData[`playerOpponent${opponentIndex}Wins`] || 0;
+                    
+                    if (opponentName && opponentName.trim() !== '') {
+                        opponentStatsFromDoc[opponentName] = {
+                            games: typeof opponentGames === 'number' ? opponentGames : parseInt(opponentGames) || 0,
+                            wins: typeof opponentWins === 'number' ? opponentWins : parseInt(opponentWins) || 0
+                        };
+                    }
+                    
+                    opponentIndex++;
+                }
+
+                // Track which opponents we've already shown head-to-head for
+                const shownH2H = new Set();
+                
+                // Generate games HTML
+                const gamesHTML = playerGames.map(game => {
+                    const dateStr = game.date.toLocaleDateString('he-IL');
+                    const resultClass = game.won ? 'win' : 'loss';
+                    const resultText = game.won ? 'ניצחון' : 'הפסד';
+                    const pointsClass = game.pointsChange >= 0 ? 'positive' : 'negative';
+                    const pointsPrefix = game.pointsChange >= 0 ? '+' : '';
+                    
+                    // Get head-to-head stats from player document
+                    const h2hStats = opponentStatsFromDoc[game.opponent];
+                    let totalH2H = 0;
+                    let playerWins = 0;
+                    let opponentWins = 0;
+                    let winPercentage = 0;
+                    let showH2H = false;
+                    
+                    if (h2hStats && !shownH2H.has(game.opponent)) {
+                        totalH2H = h2hStats.games;
+                        playerWins = h2hStats.wins;
+                        opponentWins = totalH2H - playerWins;
+                        winPercentage = totalH2H > 0 ? (playerWins / totalH2H) * 100 : 0;
+                        showH2H = true;
+                        shownH2H.add(game.opponent);
+                    }
+                    
+                    // Use the sets data we already collected
+                    const playerSets = game.playerSets;
+                    const opponentSets = game.opponentSets;
+                    
+                    return `
+                        <div class="game-card ${resultClass}">
+                            <div class="game-header">
+                                <div class="game-date">${dateStr}</div>
+                                <div class="game-result ${resultClass}">${resultText}</div>
+                            </div>
+                            <div class="game-players">
+                                <div class="player-score-section">
+                                    <div class="player-name-in-game">${currentPlayer.name}</div>
+                                    <div class="player-sets">${playerSets}</div>
+                                </div>
+                                <div class="vs-divider">🏓</div>
+                                <div class="player-score-section">
+                                    <div class="player-name-in-game">${game.opponent}</div>
+                                    <div class="player-sets">${opponentSets}</div>
+                                </div>
+                            </div>
+                            ${showH2H ? `
+                            <div class="head-to-head-section">
+                                <div class="h2h-label">מאזן משחקים: ${opponentWins}-${playerWins}</div>
+                                <div class="h2h-bar-container">
+                                    <div class="h2h-bar">
+                                        <div class="h2h-wins" style="width: ${winPercentage}%"></div>
+                                    </div>
+                                    <div class="h2h-percentage">${winPercentage.toFixed(0)}%</div>
+                                </div>
+                            </div>
+                            ` : ''}
+                            <div class="game-score">
+                                <span class="points-change ${pointsClass}">
+                                    ${game.won ? 'הרווחת' : 'הפסדת'} ${Math.abs(game.pointsChange)} נקודות
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                gamesTab.innerHTML = gamesHTML;
+                
+            } catch (error) {
+                console.error('Error loading player games:', error);
+                gamesTab.innerHTML = `
+                    <div class="no-data">
+                        <div style="font-size: 2rem; margin-bottom: 15px;">⚠️</div>
+                        <div><strong>שגיאה בטעינת המשחקים</strong></div>
+                        <div style="margin-top: 10px; font-size: 0.9rem;">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadPlayerStats(playerId) {
+            const statsTab = document.getElementById('statsTab');
+            
+            statsTab.innerHTML = `
+                <div class="loading-games">
+                    <div class="loading-spinner"></div>
+                    <div>טוען סטטיסטיקות... <span class="ping-pong-icon">🏓</span></div>
+                </div>
+            `;
+            
+            try {
+                console.log('Loading stats for player ID:', playerId);
+                
+                // Get player document
+                const playerDoc = await db.collection('Players2').doc(playerId).get();
+                
+                if (!playerDoc.exists) {
+                    throw new Error('שחקן לא נמצא');
+                }
+                
+                const playerData = playerDoc.data();
+                console.log('Player data:', playerData);
+                
+                // Get total games from playerGames field
+                const totalGames = playerData.playerGames || 0;
+                
+                // Extract opponent data and calculate total wins
+                const opponents = [];
+                let totalWins = 0;
+                let opponentIndex = 1;
+                
+                while (playerData[`playerOpponent${opponentIndex}Name`]) {
+                    const opponentName = playerData[`playerOpponent${opponentIndex}Name`];
+                    const opponentGames = playerData[`playerOpponent${opponentIndex}Games`] || 0;
+                    const opponentWins = playerData[`playerOpponent${opponentIndex}Wins`] || 0;
+                    
+                    if (opponentName && opponentName.trim() !== '') {
+                        const wins = typeof opponentWins === 'number' ? opponentWins : parseInt(opponentWins) || 0;
+                        totalWins += wins;
+                        
+                        opponents.push({
+                            name: opponentName,
+                            games: typeof opponentGames === 'number' ? opponentGames : parseInt(opponentGames) || 0,
+                            wins: wins
+                        });
+                    }
+                    
+                    opponentIndex++;
+                }
+                
+                console.log('Found opponents:', opponents.length);
+                console.log('Total games:', totalGames, 'Total wins:', totalWins);
+                
+                // Update stats summary in modal header
+                const winRatio = totalGames > 0 ? ((totalWins / totalGames) * 100).toFixed(1) : '0.0';
+                document.getElementById('totalGames').textContent = totalGames;
+                document.getElementById('totalWins').textContent = totalWins;
+                document.getElementById('winRatio').textContent = `${winRatio}%`;
+                
+                if (opponents.length === 0) {
+                    statsTab.innerHTML = `
+                        <div class="no-data">
+                            <div style="font-size: 2rem; margin-bottom: 15px;">📊</div>
+                            <div><strong>אין נתוני יריבים</strong></div>
+                            <div style="margin-top: 10px; font-size: 0.9rem;">לא נמצאו נתונים על יריבים עבור השחקן</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Sort opponents by number of games (descending)
+                opponents.sort((a, b) => b.games - a.games);
+                
+                // Generate opponents HTML
+                const opponentsHTML = opponents.map(opponent => {
+                    const losses = opponent.games - opponent.wins;
+                    const winRate = opponent.games > 0 ? ((opponent.wins / opponent.games) * 100).toFixed(1) : '0.0';
+                    
+                    let winRateClass = 'average';
+                    if (parseFloat(winRate) >= 60) {
+                        winRateClass = 'good';
+                    } else if (parseFloat(winRate) < 40) {
+                        winRateClass = 'poor';
+                    }
+                    
+                    return `
+                        <div class="opponent-card">
+                            <div class="opponent-name">${opponent.name}</div>
+                            <div class="opponent-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value">${opponent.games}</div>
+                                    <div class="stat-label">משחקים</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value">${opponent.wins}</div>
+                                    <div class="stat-label">ניצחונות</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value">${losses}</div>
+                                    <div class="stat-label">הפסדים</div>
+                                </div>
+                            </div>
+                            <div class="win-rate ${winRateClass}">
+                                אחוז ניצחונות: ${winRate}%
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                statsTab.innerHTML = opponentsHTML;
+                
+            } catch (error) {
+                console.error('Error loading player stats:', error);
+                statsTab.innerHTML = `
+                    <div class="no-data">
+                        <div style="font-size: 2rem; margin-bottom: 15px;">⚠️</div>
+                        <div><strong>שגיאה בטעינת הסטטיסטיקות</strong></div>
+                        <div style="margin-top: 10px; font-size: 0.9rem;">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('playerModal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closePlayerModal();
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'961afd45e575c22f',t:'MTc1MjkzNjE4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
