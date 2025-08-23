@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מועדון טנ"ש אשדוד - הוספת משחק</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .game-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2rem;
+            opacity: 0.8;
+            animation: paddleMove 2s ease-in-out infinite;
+        }
+        
+        .game-icon-right {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2rem;
+            opacity: 0.8;
+            animation: paddleMove 2s ease-in-out infinite reverse;
+        }
+        
+        @keyframes paddleMove {
+            0%, 100% {
+                transform: translateY(-50%) translateY(-5px);
+            }
+            50% {
+                transform: translateY(-50%) translateY(5px);
+            }
+        }
+        
+        .club-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .login-section {
+            display: block;
+        }
+        
+        .game-section {
+            display: none;
+        }
+        
+        .game-section.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #4285f4;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+        }
+        
+        .form-input.error {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(66, 133, 244, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .opponent-dropdown {
+            position: relative;
+        }
+        
+        .opponent-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .opponent-list.show {
+            display: block;
+        }
+        
+        .opponent-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background-color 0.2s ease;
+        }
+        
+        .opponent-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .opponent-item:last-child {
+            border-bottom: none;
+        }
+        
+        .sets-container {
+            display: flex;
+            gap: 20px;
+            align-items: end;
+        }
+        
+        .sets-group {
+            flex: 1;
+        }
+        
+        .sets-label {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .sets-label.player-label {
+            margin-top: -10px;
+        }
+        
+        .sets-label.opponent-label {
+            margin-top: 5px;
+        }
+        
+        .sets-input {
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #28a745;
+            background: #f8f9fa !important;
+            cursor: not-allowed;
+        }
+        
+        .sets-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+        
+        .sets-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #e1e5e9;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .sets-btn:hover {
+            border-color: #4285f4;
+            background: #f8f9fa;
+        }
+        
+        .sets-btn.active {
+            background: #4285f4;
+            color: white;
+            border-color: #4285f4;
+        }
+        
+        .result-selector {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .result-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+        
+        .result-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .result-btn {
+            padding: 12px 20px;
+            border: 2px solid #e1e5e9;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+        
+        .result-btn:hover {
+            border-color: #4285f4;
+            background: #f8f9fa;
+        }
+        
+        .result-btn.active {
+            background: #4285f4;
+            color: white;
+            border-color: #4285f4;
+        }
+        
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .success-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .success-modal.show {
+            display: flex;
+        }
+        
+        .success-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            margin: 20px;
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .success-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .success-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+        
+        .points-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-size: 1.1rem;
+        }
+        
+        .points-gained {
+            color: #28a745;
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #0d47a1;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #90caf9;
+            font-size: 0.9rem;
+        }
+        
+        .form-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1e3c72;
+            text-align: center;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .player-info {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #c3e6cb;
+        }
+        
+
+
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .club-title {
+                font-size: 1.2rem;
+            }
+            
+            .form-input {
+                padding: 12px;
+            }
+            
+            .btn {
+                padding: 12px;
+                font-size: 1rem;
+            }
+            
+            .success-content {
+                margin: 10px;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- COPY THIS ENTIRE SECTION TO YOUR HTML PAGES -->
+    <!-- START: Navigation Menu -->
+    <style>
+        /* Standalone menu styles - won't conflict with your existing code */
+        .standalone-nav {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .standalone-nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+        }
+        
+        .standalone-nav-menu {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .standalone-nav-link {
+            text-decoration: none;
+            color: #374151;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .standalone-nav-link:hover {
+            color: #4f46e5;
+            background-color: #f0f9ff;
+        }
+        
+        .standalone-mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .standalone-mobile-toggle:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .standalone-hamburger {
+            width: 24px;
+            height: 18px;
+            position: relative;
+        }
+        
+        .standalone-hamburger span {
+            display: block;
+            height: 2px;
+            width: 100%;
+            background: #374151;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .standalone-hamburger span:last-child {
+            margin-bottom: 0;
+        }
+        
+        .standalone-hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .standalone-hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .standalone-hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+        
+        .standalone-mobile-menu {
+            display: none;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 20px;
+        }
+        
+        .standalone-mobile-menu.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .standalone-mobile-menu a {
+            display: block;
+            text-decoration: none;
+            color: #374151;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+            transition: color 0.3s ease;
+        }
+        
+        .standalone-mobile-menu a:last-child {
+            border-bottom: none;
+        }
+        
+        .standalone-mobile-menu a:hover {
+            color: #4f46e5;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .standalone-nav-menu {
+                display: none;
+            }
+            
+            .standalone-mobile-toggle {
+                display: block;
+            }
+            
+            .standalone-nav-container {
+                justify-content: space-between;
+            }
+        }
+    </style>
+    
+    <nav class="standalone-nav">
+        <div class="standalone-nav-container">
+            <ul class="standalone-nav-menu">
+                <li><a href="index.html" class="standalone-nav-link">דירוג</a></li>
+                <li><a href="add_game.html" class="standalone-nav-link">הוספת משחק</a></li>
+            </ul>
+            
+            <button class="standalone-mobile-toggle" id="standaloneMenuToggle">
+                <div class="standalone-hamburger" id="standaloneHamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+        </div>
+        
+        <div class="standalone-mobile-menu" id="standaloneMobileMenu">
+            <a href="index.html">דירוג</a>
+            <a href="add_game.html">הוספת משחק</a>
+        </div>
+    </nav>
+    
+    <script>
+        // Standalone menu functionality - won't conflict with your existing JavaScript
+        (function() {
+            const menuToggle = document.getElementById('standaloneMenuToggle');
+            const mobileMenu = document.getElementById('standaloneMobileMenu');
+            const hamburger = document.getElementById('standaloneHamburger');
+            
+            if (menuToggle && mobileMenu && hamburger) {
+                menuToggle.addEventListener('click', function() {
+                    const isVisible = mobileMenu.classList.contains('show');
+                    
+                    if (isVisible) {
+                        mobileMenu.classList.remove('show');
+                        hamburger.classList.remove('active');
+                    } else {
+                        mobileMenu.classList.add('show');
+                        hamburger.classList.add('active');
+                    }
+                });
+                
+                // Close menu when clicking on mobile links
+                const mobileLinks = mobileMenu.querySelectorAll('a');
+                mobileLinks.forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        mobileMenu.classList.remove('show');
+                        hamburger.classList.remove('active');
+                    });
+                });
+            }
+        })();
+    </script>
+    <!-- END: Navigation Menu -->
+     
+    <div class="container">
+        <div class="header">
+            <div class="game-icon">🏓</div>
+            <div class="game-icon-right">🏓</div>
+            <h1 class="club-title">מועדון טנ"ש אשדוד</h1>
+        </div>
+        
+        <div class="main-content">
+            <!-- Login Section -->
+            <div class="login-section" id="loginSection">
+                <div class="form-title">
+                    🔐 כניסת שחקן
+                </div>
+                
+                <div class="info-box">
+                    <span>ℹ️</span>
+                    הזן את פרטי הכניסה שלך כדי להוסיף משחקים שזכית בהם
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="playerEmail">כתובת אימייל</label>
+                    <input type="email" id="playerEmail" class="form-input" placeholder="הזן את האימייל שלך">
+                    <div class="error-message" id="emailError">יש להזין כתובת אימייל תקינה</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="playerPassword">סיסמה</label>
+                    <input type="password" id="playerPassword" class="form-input" placeholder="הזן את הסיסמה שלך">
+                    <div class="error-message" id="passwordError">יש להזין סיסמה</div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="loginPlayer()">
+                    <span id="loginBtnText">כניסה</span>
+                    <div class="loading-spinner" id="loginSpinner" style="display: none;"></div>
+                </button>
+            </div>
+            
+            <!-- Game Addition Section -->
+            <div class="game-section" id="gameSection">
+
+                
+                <div class="player-info" id="playerInfo">
+                    <div><strong>שלום, <span id="playerNameDisplay"></span>!</strong></div>
+                    <div>נקודות: <span id="playerPointsDisplay"></span> | משחקים: <span id="playerGamesDisplay"></span></div>
+                </div>
+                
+                <div class="form-title">
+                    🏆 הוספת משחק חדש
+                </div>
+                
+                <div class="info-box">
+                    <span>🎯</span>
+                    הוסף רק משחקים שזכית בהם (3 סטים לך)
+                </div>
+
+                <form id="gameForm">
+                    <div class="form-group">
+                        <label class="form-label" for="opponentSearch">יריב</label>
+                        <div class="opponent-dropdown">
+                            <input type="text" id="opponentSearch" class="form-input" placeholder="חפש או בחר יריב..." autocomplete="off">
+                            <div class="opponent-list" id="opponentList"></div>
+                        </div>
+                        <div class="error-message" id="opponentError">יש לבחור יריב</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="sets-container">
+                            <div class="sets-group">
+                                <div class="sets-label opponent-label" id="opponentSetsLabel">סטים של היריב</div>
+                                <input type="text" id="opponentSets" class="form-input sets-input" value="0" readonly>
+                            </div>
+                            <div class="sets-group">
+                                <div class="sets-label player-label">הסטים שלך</div>
+                                <input type="text" id="playerSets" class="form-input sets-input" value="3" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="result-selector">
+                            <div class="result-label">תוצאת המשחק</div>
+                            <div class="result-buttons">
+                                <button type="button" class="result-btn active" onclick="setMatchResult(0, 3)">3-0</button>
+                                <button type="button" class="result-btn" onclick="setMatchResult(1, 3)">3-1</button>
+                                <button type="button" class="result-btn" onclick="setMatchResult(2, 3)">3-2</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success" id="saveGameBtn" disabled>
+                        <span id="saveBtnText">שמור משחק</span>
+                        <div class="loading-spinner" id="saveSpinner" style="display: none;"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Success Modal -->
+    <div class="success-modal" id="successModal">
+        <div class="success-content">
+            <div class="success-icon">🎉</div>
+            <div class="success-title">כל הכבוד!</div>
+            <div id="successMessage">המשחק נשמר בהצלחה</div>
+            <div class="points-info">
+                <div>זכית ב: <span class="points-gained" id="pointsGained">+0</span> נקודות</div>
+                <div>היריב איבד: <span style="color: #dc3545; font-weight: 700;" id="opponentLost">0</span> נקודות</div>
+            </div>
+            <button class="btn btn-primary" onclick="closeSuccessModal()">
+                המשך
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJ3Y_5_O0yeQC3cqTRfyTPdU6GWFSq7rM",
+            projectId: "ashdodtabletennis",
+            authDomain: "ashdodtabletennis.firebaseapp.com",
+            storageBucket: "ashdodtabletennis.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Points calculation table
+        const pointsTable = [
+            { range: [0, 25], higherWin: 9, higherLose: -5, lowerWin: 10, lowerLose: -5 },
+            { range: [26, 50], higherWin: 8, higherLose: -4, lowerWin: 12, lowerLose: -6 },
+            { range: [51, 100], higherWin: 7, higherLose: -4, lowerWin: 14, lowerLose: -7 },
+            { range: [101, 150], higherWin: 6, higherLose: -3, lowerWin: 16, lowerLose: -8 },
+            { range: [151, 200], higherWin: 5, higherLose: -3, lowerWin: 20, lowerLose: -10 },
+            { range: [201, 300], higherWin: 4, higherLose: -2, lowerWin: 24, lowerLose: -12 },
+            { range: [301, 400], higherWin: 3, higherLose: -2, lowerWin: 28, lowerLose: -14 },
+            { range: [401, 500], higherWin: 2, higherLose: -1, lowerWin: 32, lowerLose: -16 },
+            { range: [501, 750], higherWin: 1, higherLose: -1, lowerWin: 36, lowerLose: -18 },
+            { range: [751, Infinity], higherWin: 0, higherLose: 0, lowerWin: 40, lowerLose: -20 },
+        ];
+
+        let currentPlayer = null;
+        let allPlayers = [];
+        let selectedOpponent = null;
+        let opponentSetsValue = 0;
+
+        // Login functionality
+        async function loginPlayer() {
+            const email = document.getElementById('playerEmail').value.trim().toLowerCase();
+            const password = document.getElementById('playerPassword').value.trim();
+            const loginBtn = document.getElementById('loginBtnText');
+            const loginSpinner = document.getElementById('loginSpinner');
+            
+            clearErrors();
+            
+            if (!email || !password) {
+                if (!email) showError('emailError', 'יש להזין כתובת אימייל');
+                if (!password) showError('passwordError', 'יש להזין סיסמה');
+                return;
+            }
+            
+            // Show loading
+            loginBtn.style.display = 'none';
+            loginSpinner.style.display = 'block';
+            
+            try {
+                const playersSnapshot = await db.collection('Players2')
+                    .where('playerEmail', '==', email)
+                    .where('playerPassword', '==', password)
+                    .get();
+                
+                if (playersSnapshot.empty) {
+                    showError('passwordError', 'אימייל או סיסמה שגויים');
+                    return;
+                }
+                
+                currentPlayer = playersSnapshot.docs[0];
+                const playerData = currentPlayer.data();
+                
+                // Save login credentials for next time
+                localStorage.setItem('playerEmail', email);
+                localStorage.setItem('playerPassword', password);
+                
+                // Load all players for opponent selection
+                await loadAllPlayers();
+                
+                // Show game section
+                showGameSection(playerData);
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('שגיאה בכניסה למערכת');
+            } finally {
+                loginBtn.style.display = 'block';
+                loginSpinner.style.display = 'none';
+            }
+        }
+
+        async function loadAllPlayers() {
+            try {
+                const playersSnapshot = await db.collection('Players2')
+                    .where('active', '==', true)
+                    .get();
+                
+                allPlayers = playersSnapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(player => player.id !== currentPlayer.id)
+                    .sort((a, b) => a.playerName.localeCompare(b.playerName, 'he'));
+                
+            } catch (error) {
+                console.error('Error loading players:', error);
+            }
+        }
+
+        function showGameSection(playerData) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('gameSection').classList.add('active');
+            
+            // Update player info display
+            document.getElementById('playerNameDisplay').textContent = playerData.playerName;
+            document.getElementById('playerPointsDisplay').textContent = playerData.playerPoints || 0;
+            document.getElementById('playerGamesDisplay').textContent = playerData.playerGames || 0;
+            
+            setupOpponentSearch();
+        }
+
+        function setupOpponentSearch() {
+            const searchInput = document.getElementById('opponentSearch');
+            const opponentList = document.getElementById('opponentList');
+            
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                filterOpponents(searchTerm);
+            });
+            
+            searchInput.addEventListener('focus', () => {
+                filterOpponents('');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.opponent-dropdown')) {
+                    opponentList.classList.remove('show');
+                }
+            });
+        }
+
+        function filterOpponents(searchTerm) {
+            const opponentList = document.getElementById('opponentList');
+            const filteredPlayers = allPlayers.filter(player => 
+                player.playerName.toLowerCase().includes(searchTerm)
+            );
+            
+            opponentList.innerHTML = '';
+            
+            filteredPlayers.forEach(player => {
+                const item = document.createElement('div');
+                item.className = 'opponent-item';
+                item.textContent = `${player.playerName} (${player.playerPoints || 0} נקודות)`;
+                item.onclick = () => selectOpponent(player);
+                opponentList.appendChild(item);
+            });
+            
+            opponentList.classList.add('show');
+        }
+
+        function selectOpponent(player) {
+            selectedOpponent = player;
+            document.getElementById('opponentSearch').value = player.playerName;
+            document.getElementById('opponentList').classList.remove('show');
+            
+            // Update opponent sets label with opponent name
+            document.getElementById('opponentSetsLabel').textContent = `סטים של ${player.playerName}`;
+            
+            // Enable save button
+            document.getElementById('saveGameBtn').disabled = false;
+            
+            clearError('opponentError');
+        }
+
+        function setMatchResult(opponentSets, playerSets) {
+            document.getElementById('playerSets').value = playerSets;
+            opponentSetsValue = opponentSets;
+            document.getElementById('opponentSets').value = opponentSets;
+            
+            // Update result button states
+            document.querySelectorAll('.result-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function calculatePoints(playerPoints, opponentPoints) {
+            const pointsDiff = Math.abs(playerPoints - opponentPoints);
+            
+            for (const rule of pointsTable) {
+                if (pointsDiff >= rule.range[0] && pointsDiff <= rule.range[1]) {
+                    if (playerPoints > opponentPoints) {
+                        // Player has higher points and wins
+                        return { playerGain: rule.higherWin, opponentLoss: rule.higherLose };
+                    } else {
+                        // Player has lower points and wins
+                        return { playerGain: rule.lowerWin, opponentLoss: rule.lowerLose };
+                    }
+                }
+            }
+            
+            return { playerGain: 0, opponentLoss: 0 };
+        }
+
+        async function updateOpponentStats(playerId, opponentName) {
+            try {
+                const playerDoc = await db.collection('Players2').doc(playerId).get();
+                const playerData = playerDoc.data();
+                
+                // Check existing opponents (playerOpponent1Name to playerOpponent500Name)
+                for (let i = 1; i <= 500; i++) {
+                    const opponentNameField = `playerOpponent${i}Name`;
+                    const opponentGamesField = `playerOpponent${i}Games`;
+                    const opponentWinsField = `playerOpponent${i}Wins`;
+                    
+                    if (playerData[opponentNameField] === opponentName) {
+                        // Opponent exists, update stats
+                        await db.collection('Players2').doc(playerId).update({
+                            [opponentGamesField]: (playerData[opponentGamesField] || 0) + 1,
+                            [opponentWinsField]: (playerData[opponentWinsField] || 0) + 1
+                        });
+                        return;
+                    }
+                }
+                
+                // Find empty slot for new opponent
+                for (let i = 1; i <= 500; i++) {
+                    const opponentNameField = `playerOpponent${i}Name`;
+                    
+                    if (!playerData[opponentNameField]) {
+                        // Empty slot found, add new opponent
+                        await db.collection('Players2').doc(playerId).update({
+                            [opponentNameField]: opponentName,
+                            [`playerOpponent${i}Games`]: 1,
+                            [`playerOpponent${i}Wins`]: 1
+                        });
+                        return;
+                    }
+                }
+                
+                console.log('No available opponent slots');
+                
+            } catch (error) {
+                console.error('Error updating opponent stats:', error);
+            }
+        }
+
+        async function updateOpponentOpponentStats(opponentId, playerName) {
+            try {
+                const opponentDoc = await db.collection('Players2').doc(opponentId).get();
+                const opponentData = opponentDoc.data();
+                
+                // Check if player already exists in opponent's opponent list
+                for (let i = 1; i <= 500; i++) {
+                    const opponentNameField = `playerOpponent${i}Name`;
+                    const opponentGamesField = `playerOpponent${i}Games`;
+                    const opponentWinsField = `playerOpponent${i}Wins`;
+                    
+                    if (opponentData[opponentNameField] === playerName) {
+                        // Player exists in opponent's list, update games count (opponent lost, so no wins added)
+                        await db.collection('Players2').doc(opponentId).update({
+                            [opponentGamesField]: (opponentData[opponentGamesField] || 0) + 1
+                        });
+                        return;
+                    }
+                }
+                
+                // Player not found, find empty slot to add new opponent
+                for (let i = 1; i <= 500; i++) {
+                    const opponentNameField = `playerOpponent${i}Name`;
+                    
+                    if (!opponentData[opponentNameField]) {
+                        // Empty slot found, add new opponent
+                        await db.collection('Players2').doc(opponentId).update({
+                            [opponentNameField]: playerName,
+                            [`playerOpponent${i}Games`]: 1,
+                            [`playerOpponent${i}Wins`]: 0
+                        });
+                        return;
+                    }
+                }
+                
+                console.log('No available opponent slots for opponent');
+                
+            } catch (error) {
+                console.error('Error updating opponent opponent stats:', error);
+            }
+        }
+
+        // Game form submission
+        document.getElementById('gameForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const saveBtn = document.getElementById('saveGameBtn');
+            const saveBtnText = document.getElementById('saveBtnText');
+            const saveSpinner = document.getElementById('saveSpinner');
+            
+            clearErrors();
+            
+            // Validation
+            if (!selectedOpponent) {
+                showError('opponentError', 'יש לבחור יריב');
+                return;
+            }
+            
+            // Show loading
+            saveBtn.disabled = true;
+            saveBtnText.style.display = 'none';
+            saveSpinner.style.display = 'block';
+
+            try {
+                // Get fresh data from database to ensure we have latest points
+                const currentPlayerDoc = await db.collection('Players2').doc(currentPlayer.id).get();
+                const currentPlayerData = currentPlayerDoc.data();
+                const playerPoints = currentPlayerData.playerPoints || 0;
+                
+                // Get fresh opponent data from database
+                const opponentDoc = await db.collection('Players2').doc(selectedOpponent.id).get();
+                const freshOpponentData = opponentDoc.data();
+                const opponentPoints = freshOpponentData.playerPoints || 0;
+                
+                // Calculate points
+                const pointsCalc = calculatePoints(playerPoints, opponentPoints);
+                
+                // Update current player
+                await db.collection('Players2').doc(currentPlayer.id).update({
+                    playerGames: (currentPlayerData.playerGames || 0) + 1,
+                    playerPoints: playerPoints + pointsCalc.playerGain
+                });
+                
+                // Update opponent
+                const newOpponentPoints = Math.max(1, opponentPoints + pointsCalc.opponentLoss);
+                await db.collection('Players2').doc(selectedOpponent.id).update({
+                    playerGames: (freshOpponentData.playerGames || 0) + 1,
+                    playerPoints: newOpponentPoints
+                });
+                
+                // Update opponent points in local array for dropdown display
+                const opponentIndex = allPlayers.findIndex(p => p.id === selectedOpponent.id);
+                if (opponentIndex !== -1) {
+                    allPlayers[opponentIndex].playerPoints = newOpponentPoints;
+                    allPlayers[opponentIndex].playerGames = (freshOpponentData.playerGames || 0) + 1;
+                }
+                
+                // Update current player reference with fresh data
+                currentPlayer = currentPlayerDoc;
+                
+                // Update opponent statistics for current player
+                await updateOpponentStats(currentPlayer.id, selectedOpponent.playerName);
+                
+                // Update current player in opponent's opponent list
+                await updateOpponentOpponentStats(selectedOpponent.id, currentPlayerData.playerName);
+                
+                // Create game record in games collection
+                await db.collection('games').add({
+                    date: Date.now(),
+                    player1Amount: pointsCalc.playerGain,
+                    player1Name: currentPlayerData.playerName,
+                    player1Points: playerPoints,
+                    player1Sets: "3",
+                    player2Amount: pointsCalc.opponentLoss,
+                    player2Name: selectedOpponent.playerName,
+                    player2Points: opponentPoints,
+                    player2Sets: opponentSetsValue.toString()
+                });
+                
+                // Update player info display first
+                const newPlayerPoints = playerPoints + pointsCalc.playerGain;
+                const newPlayerGames = (currentPlayerData.playerGames || 0) + 1;
+                document.getElementById('playerPointsDisplay').textContent = newPlayerPoints;
+                document.getElementById('playerGamesDisplay').textContent = newPlayerGames;
+                
+                // Show success modal
+                showSuccessModal(pointsCalc.playerGain, pointsCalc.opponentLoss);
+                
+                // Reset form
+                resetGameForm();
+
+            } catch (error) {
+                console.error('Error saving game:', error);
+                alert('שגיאה בשמירת המשחק');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtnText.style.display = 'block';
+                saveSpinner.style.display = 'none';
+            }
+        });
+
+        function showSuccessModal(pointsGained, opponentLoss) {
+            document.getElementById('pointsGained').textContent = pointsGained;
+            document.getElementById('opponentLost').textContent = Math.abs(opponentLoss);
+            document.getElementById('successModal').classList.add('show');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.remove('show');
+        }
+
+        function resetGameForm() {
+            document.getElementById('opponentSearch').value = '';
+            selectedOpponent = null;
+            
+            // Reset to default 0-3 selection
+            document.getElementById('playerSets').value = '3';
+            opponentSetsValue = 0;
+            document.getElementById('opponentSets').value = '0';
+            
+            // Reset result button states
+            document.querySelectorAll('.result-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.result-btn:first-child').classList.add('active');
+            
+            document.getElementById('opponentList').classList.remove('show');
+            
+            // Reset opponent sets label
+            document.getElementById('opponentSetsLabel').textContent = 'סטים של היריב';
+            
+            // Disable save button
+            document.getElementById('saveGameBtn').disabled = true;
+        }
+
+        function logout() {
+            currentPlayer = null;
+            allPlayers = [];
+            selectedOpponent = null;
+            
+            document.getElementById('gameSection').classList.remove('active');
+            document.getElementById('loginSection').style.display = 'block';
+            
+            // Clear login form
+            document.getElementById('playerEmail').value = '';
+            document.getElementById('playerPassword').value = '';
+            
+            // Clear saved credentials
+            localStorage.removeItem('playerEmail');
+            localStorage.removeItem('playerPassword');
+            
+            // Reset game form
+            resetGameForm();
+            clearErrors();
+        }
+
+        function showError(elementId, message) {
+            const errorDiv = document.getElementById(elementId);
+            const inputElement = document.getElementById(elementId.replace('Error', ''));
+            
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            if (inputElement) inputElement.classList.add('error');
+        }
+
+        function clearError(elementId) {
+            const errorDiv = document.getElementById(elementId);
+            const inputElement = document.getElementById(elementId.replace('Error', ''));
+            
+            errorDiv.classList.remove('show');
+            if (inputElement) inputElement.classList.remove('error');
+        }
+
+        function clearErrors() {
+            const errorMessages = document.querySelectorAll('.error-message');
+            const inputs = document.querySelectorAll('.form-input');
+            
+            errorMessages.forEach(error => error.classList.remove('show'));
+            inputs.forEach(input => input.classList.remove('error'));
+        }
+
+        // Enter key support
+        document.getElementById('playerPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginPlayer();
+            }
+        });
+
+        // Load saved login credentials on page load
+        function loadSavedCredentials() {
+            const savedEmail = localStorage.getItem('playerEmail');
+            const savedPassword = localStorage.getItem('playerPassword');
+            
+            if (savedEmail) {
+                document.getElementById('playerEmail').value = savedEmail;
+            }
+            if (savedPassword) {
+                document.getElementById('playerPassword').value = savedPassword;
+            }
+        }
+
+        // Test Firebase connection
+        window.addEventListener('load', async () => {
+            try {
+                console.log('Testing Firebase connection...');
+                await db.collection('Players2').limit(1).get();
+                console.log('Firebase connection successful');
+                
+                // Load saved credentials
+                loadSavedCredentials();
+                
+            } catch (error) {
+                console.error('Firebase connection error:', error);
+                alert('בעיה בחיבור למסד הנתונים');
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96319886830fc231',t:'MTc1MzE3MzIzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
