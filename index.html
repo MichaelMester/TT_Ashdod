@@ -3,198 +3,1155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>בית — האתר שלי</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>10 המשחקים האחרונים</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
-        
         * {
-            font-family: 'Heebo', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        .nav-menu {
-            transition: all 0.3s ease;
-        }
-        
-        .nav-menu.active {
-            transform: translateX(0);
-        }
-        
-        .nav-link {
-            position: relative;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 2px;
-            bottom: -4px;
-            right: 50%;
-            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
-            transition: all 0.3s ease;
-        }
-        
-        .nav-link:hover::after,
-        .nav-link.active::after {
-            width: 100%;
-            right: 0;
-        }
-        
-        .nav-link:hover {
-            color: #3b82f6;
-            transform: translateY(-1px);
-        }
-        
-        .brand-gradient {
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            min-height: 100vh;
+            direction: rtl;
+            padding: 20px;
         }
-        
-        .mobile-menu-btn {
-            transition: transform 0.3s ease;
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        
-        .mobile-menu-btn.active {
-            transform: rotate(90deg);
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
-        
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: linear-gradient(135deg, #229954, #1e8449);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .refresh-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .last-updated {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .games-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .games-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .games-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .game-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .game-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: #3498db;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .game-date {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+
+        .game-number {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .game-content {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .players-header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .player-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .player-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .player-name.winner {
+            color: #27ae60;
+        }
+
+        .vs-separator {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #7f8c8d;
+        }
+
+        .desktop-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .desktop-stat-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .desktop-stat-label {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .desktop-stat-values {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 15px;
+            flex: 1;
+            align-items: center;
+            text-align: center;
+        }
+
+        .desktop-vs-spacer {
+            width: 20px;
+        }
+
+        .stats-labels {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 15px;
+            margin-bottom: 5px;
+        }
+
+        .labels-section {
+            display: flex;
+            justify-content: space-around;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+
+        .labels-spacer {
+            width: 20px;
+        }
+
+        .stats-values {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 15px;
+        }
+
+        .player-values {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .desktop-only .player-values {
+            justify-content: space-between;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 0.85rem;
+        }
+
+        .points-change {
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .points-gain {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        .points-loss {
+            background: #fadbd8;
+            color: #e74c3c;
+        }
+
+        .sets-display {
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 0.85rem;
+        }
+
+        .values-spacer {
+            width: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-size: 1.2rem;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fadbd8;
+            color: #e74c3c;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #bdc3c7;
+        }
+
+        .mobile-only {
+            display: none;
+        }
+
+        .desktop-only {
+            display: block;
+        }
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
-            .nav-menu {
-                transform: translateX(100%);
+            .mobile-only {
+                display: block;
+            }
+
+            .desktop-only {
+                display: none;
+            }
+            body {
+                padding: 5px;
+            }
+
+            .header {
+                padding: 12px 10px;
+                margin-bottom: 10px;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+                margin-bottom: 5px;
+            }
+
+            .header p {
+                font-size: 0.9rem;
+            }
+
+            .controls {
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+
+            .refresh-btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+                width: 100%;
+            }
+
+            .games-container {
+                padding: 10px 8px;
+            }
+
+            .games-title {
+                font-size: 1.3rem;
+                margin-bottom: 10px;
+            }
+
+            .games-list {
+                gap: 8px;
+            }
+
+            .game-card {
+                padding: 10px;
+            }
+
+            .game-header {
+                flex-direction: row;
+                justify-content: space-between;
+                gap: 5px;
+                text-align: center;
+                margin-bottom: 8px;
+                padding-bottom: 5px;
+            }
+
+            .game-date {
+                font-size: 0.75rem;
+            }
+
+            .game-number {
+                font-size: 0.65rem;
+                padding: 3px 8px;
+            }
+
+            .players-header {
+                display: none;
+            }
+
+            .player-section {
+                gap: 2px;
+            }
+
+            .vs-separator {
+                font-size: 0.85rem;
+                padding: 3px 0;
+            }
+
+            .stats-labels {
+                display: none;
+            }
+
+            .stats-values {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .stats-values .desktop-only {
+                display: none;
+            }
+
+            .stats-values .mobile-only {
+                display: flex;
+            }
+
+            .mobile-stat-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 3px 0;
+            }
+
+            .mobile-stat-label {
+                font-size: 0.7rem;
+                color: #7f8c8d;
+                font-weight: 600;
+                min-width: 40px;
+                text-align: right;
+            }
+
+            .mobile-stat-values {
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
+                gap: 10px;
+                flex: 1;
+                align-items: center;
+                text-align: center;
+            }
+
+            .mobile-stat-values .stat-value:first-child {
+                text-align: center;
+            }
+
+            .mobile-stat-values .stat-value:last-child {
+                text-align: center;
+            }
+
+            .mobile-stat-values .points-change:first-child {
+                text-align: center;
+            }
+
+            .mobile-stat-values .points-change:last-child {
+                text-align: center;
+            }
+
+            .mobile-vs-spacer {
+                width: 20px;
+            }
+
+            .labels-spacer,
+            .values-spacer {
+                display: none;
+            }
+
+            .player-name {
+                font-size: 0.95rem;
+                margin-bottom: 3px;
+            }
+
+            .labels-section {
+                font-size: 0.7rem;
+            }
+
+            .player-values {
+                font-size: 0.75rem;
+            }
+
+            .stat-value {
+                font-size: 0.75rem;
+            }
+
+            .points-change {
+                font-size: 0.7rem;
+                padding: 1px 4px;
+            }
+
+            .sets-display {
+                padding: 3px 6px;
+                font-size: 0.75rem;
+            }
+
+            .game-content {
+                gap: 6px;
             }
         }
-        
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 60vh;
-        }
-        
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+        @media (max-width: 480px) {
+            body {
+                padding: 3px;
+            }
+
+            .header {
+                padding: 8px 6px;
+                margin-bottom: 8px;
+            }
+
+            .header h1 {
+                font-size: 1.3rem;
+                margin-bottom: 3px;
+            }
+
+            .header p {
+                font-size: 0.8rem;
+            }
+
+            .controls {
+                padding: 8px;
+                margin-bottom: 8px;
+            }
+
+            .refresh-btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+            }
+
+            .games-container {
+                padding: 8px 5px;
+            }
+
+            .games-title {
+                font-size: 1.2rem;
+                margin-bottom: 8px;
+            }
+
+            .games-list {
+                gap: 6px;
+            }
+
+            .game-card {
+                padding: 8px;
+            }
+
+            .game-header {
+                margin-bottom: 6px;
+                padding-bottom: 4px;
+            }
+
+            .game-date {
+                font-size: 0.7rem;
+            }
+
+            .game-number {
+                font-size: 0.6rem;
+                padding: 2px 6px;
+            }
+
+            .player-name {
+                font-size: 0.9rem;
+            }
+
+            .vs-separator {
+                font-size: 0.8rem;
+                padding: 2px 0;
+            }
+
+            .labels-section {
+                font-size: 0.65rem;
+            }
+
+            .player-values {
+                font-size: 0.7rem;
+            }
+
+            .stat-value {
+                font-size: 0.7rem;
+            }
+
+            .points-change {
+                font-size: 0.65rem;
+                padding: 1px 3px;
+            }
+
+            .sets-display {
+                padding: 2px 5px;
+                font-size: 0.7rem;
+            }
+
+            .game-content {
+                gap: 4px;
+            }
+
+            .players-header {
+                gap: 8px;
+                margin-bottom: 4px;
+            }
+
+            .player-section {
+                gap: 1px;
+            }
+
+            .mobile-stat-row {
+                gap: 8px;
+                padding: 2px 0;
+            }
+
+            .mobile-stat-label {
+                font-size: 0.65rem;
+                min-width: 35px;
+            }
+
+            .stats-values {
+                gap: 3px;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-50">
-    <!-- Navigation Bar -->
-    <nav class="bg-white shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <!-- Brand Logo -->
-                <div class="flex-shrink-0">
-                    <a href="#" class="text-2xl font-bold brand-gradient hover:scale-105 transition-transform duration-300">
-                        האתר שלי
-                    </a>
+<body>
+    <!-- COPY THIS ENTIRE SECTION TO YOUR HTML PAGES -->
+    <!-- START: Navigation Menu -->
+    <style>
+        /* Standalone menu styles - won't conflict with your existing code */
+        .standalone-nav {
+            background: #756fe9;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .standalone-nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+        }
+        
+        .standalone-nav-menu {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .standalone-nav-link {
+            text-decoration: none;
+            color: #374151;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .standalone-nav-link:hover {
+            color: #4f46e5;
+            background-color: #f0f9ff;
+        }
+        
+        .standalone-mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .standalone-mobile-toggle:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .standalone-hamburger {
+            width: 24px;
+            height: 18px;
+            position: relative;
+        }
+        
+        .standalone-hamburger span {
+            display: block;
+            height: 2px;
+            width: 100%;
+            background: #374151;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .standalone-hamburger span:last-child {
+            margin-bottom: 0;
+        }
+        
+        .standalone-hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .standalone-hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .standalone-hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+        
+        .standalone-mobile-menu {
+            display: none;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 20px;
+        }
+        
+        .standalone-mobile-menu.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .standalone-mobile-menu a {
+            display: block;
+            text-decoration: none;
+            color: #374151;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+            transition: color 0.3s ease;
+        }
+        
+        .standalone-mobile-menu a:last-child {
+            border-bottom: none;
+        }
+        
+        .standalone-mobile-menu a:hover {
+            color: #4f46e5;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .standalone-nav-menu {
+                display: none;
+            }
+            
+            .standalone-mobile-toggle {
+                display: block;
+            }
+            
+            .standalone-nav-container {
+                justify-content: space-between;
+            }
+        }
+    </style>
+    
+     <nav class="standalone-nav">
+        <div class="standalone-nav-container">
+            <ul class="standalone-nav-menu">
+                <li><a href="index.html" class="standalone-nav-link">משחקים אחרונים</a></li>
+                <li><a href="add_game.html" class="standalone-nav-link">הוספת משחק</a></li>
+                 <li><a href="group_hug.html" class="standalone-nav-link">דירוג חוג</a></li>
+                  <li><a href="group_adult.html" class="standalone-nav-link">דירוג בוגרים</a></li>
+                <li><a href="admin.html" class="standalone-nav-link">ניהול</a></li>  
+            </ul>
+            
+            <button class="standalone-mobile-toggle" id="standaloneMenuToggle">
+                <div class="standalone-hamburger" id="standaloneHamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
-                
-                <!-- Desktop Menu -->
-                <div class="hidden md:block">
-                    <div class="flex items-center space-x-8 space-x-reverse">
-                        <a href="index.html" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium active">
-                            בית
-                        </a>
-                        <a href="score.html" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium">
-                            משחק
-                        </a>
-                        <a href="rank.html" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium">
-                            דירוג
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- Mobile Menu Button -->
-                <div class="md:hidden">
-                    <button id="mobile-menu-btn" class="mobile-menu-btn text-gray-700 hover:text-blue-600 focus:outline-none focus:text-blue-600 p-2">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
+            </button>
         </div>
         
-        <!-- Mobile Menu -->
-        <div id="mobile-menu" class="nav-menu md:hidden bg-white border-t border-gray-200 absolute w-full shadow-lg">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="index.html" class="nav-link block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md active">
-                    בית
-                </a>
-                <a href="score.html" class="nav-link block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md">
-                    משחק
-                </a>
-                <a href="rank.html" class="nav-link block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md">
-                    דירוג
-                </a>
-            </div>
+        <div class="standalone-mobile-menu" id="standaloneMobileMenu">
+            <a href="index.html">משחקים אחרונים</a>
+            <a href="add_game.html">הוספת משחק</a>
+            <a href="group_hug.html">דירוג חוג</a>
+            <a href="group_adult.html">דירוג בוגרים</a>
+            <a href="admin.html">ניהול</a>
         </div>
     </nav>
+    
+    <script>
+        // Standalone menu functionality - won't conflict with your existing JavaScript
+        (function() {
+            const menuToggle = document.getElementById('standaloneMenuToggle');
+            const mobileMenu = document.getElementById('standaloneMobileMenu');
+            const hamburger = document.getElementById('standaloneHamburger');
+            
+            if (menuToggle && mobileMenu && hamburger) {
+                menuToggle.addEventListener('click', function() {
+                    const isVisible = mobileMenu.classList.contains('show');
+                    
+                    if (isVisible) {
+                        mobileMenu.classList.remove('show');
+                        hamburger.classList.remove('active');
+                    } else {
+                        mobileMenu.classList.add('show');
+                        hamburger.classList.add('active');
+                    }
+                });
+                
+                // Close menu when clicking on mobile links
+                const mobileLinks = mobileMenu.querySelectorAll('a');
+                mobileLinks.forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        mobileMenu.classList.remove('show');
+                        hamburger.classList.remove('active');
+                    });
+                });
+            }
+        })();
+    </script>
+    <!-- END: Navigation Menu -->
 
-    <!-- Hero Section -->
-    <section id="home" class="hero-section flex items-center justify-center text-white">
-        <div class="text-center px-4">
-            <h1 class="text-5xl md:text-6xl font-bold mb-6 animate-pulse">
-                ברוכים הבאים
-            </h1>
-            <p class="text-xl md:text-2xl mb-8 opacity-90">
-                זהו עמוד הבית. השתמש בתפריט הניווט כדי לעבור לעמודים אחרים
-            </p>
-            <div class="space-x-4 space-x-reverse">
-                <a href="score.html" class="inline-block bg-white text-purple-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-colors duration-300 shadow-lg">
-                    התחל משחק
-                </a>
-                <a href="rank.html" class="inline-block border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-purple-600 transition-colors duration-300">
-                    צפה בדירוג
-                </a>
+
+    <div class="container">
+        <!-- Games Container -->
+        <div class="games-container">
+            <h2 class="games-title">📋 משחקים אחרונים</h2>
+            <div id="gamesContainer">
+                <div class="loading">טוען משחקים...</div>
             </div>
         </div>
-    </section>
+    </div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            getDocs,
+            query,
+            orderBy,
+            limit
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJ3Y_5_O0yeQC3cqTRfyTPdU6GWFSq7rM",
+            projectId: "ashdodtabletennis",
+            authDomain: "ashdodtabletennis.firebaseapp.com",
+            storageBucket: "ashdodtabletennis.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
 
+        // Global variables
+        let app = null;
+        let db = null;
 
+        // DOM elements
+        const gamesContainer = document.getElementById('gamesContainer');
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div class="text-2xl font-bold brand-gradient mb-4">האתר שלי</div>
-            <p class="text-gray-400">© 2024 כל הזכויות שמורות</p>
-        </div>
-    </footer>
+        // Initialize Firebase
+        async function initializeFirebase() {
+            try {
+                console.log('🔥 Initializing Firebase...');
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
 
-    <script>
-        // Mobile menu toggle
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
-        
-        mobileMenuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('active');
-            mobileMenuBtn.classList.toggle('active');
-        });
-
-        // Close mobile menu when clicking on links
-        document.querySelectorAll('#mobile-menu a').forEach(link => {
-            link.addEventListener('click', () => {
-                mobileMenu.classList.remove('active');
-                mobileMenuBtn.classList.remove('active');
-            });
-        });
-
-        // Highlight active link based on current page
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === currentPage) {
-                link.classList.add('active');
+                // Test connection by trying to access the games collection
+                await getDocs(query(collection(db, 'games'), limit(1)));
+                
+                console.log('✅ Firebase connected successfully');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Firebase connection error:', error);
+                showError(`שגיאה בהתחברות ל-Firebase: ${error.message}`);
+                return false;
             }
-        });
+        }
+
+        // Load last 10 games
+        async function loadLastGames() {
+            try {
+                console.log('📊 Loading last 10 games...');
+                
+                // Show loading state
+                gamesContainer.innerHTML = '<div class="loading">טוען משחקים...</div>';
+                
+                // Query last 10 games ordered by date (descending)
+                const gamesRef = collection(db, 'games');
+                const q = query(gamesRef, orderBy('date', 'desc'), limit(10));
+                const snapshot = await getDocs(q);
+                
+                const games = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    games.push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+
+                console.log(`✅ Loaded ${games.length} games`);
+                
+                // Display games
+                displayGames(games);
+                
+            } catch (error) {
+                console.error('❌ Error loading games:', error);
+                showError(`שגיאה בטעינת המשחקים: ${error.message}`);
+            } finally {
+                // Loading complete
+            }
+        }
+
+        // Display games
+        function displayGames(games) {
+            if (games.length === 0) {
+                gamesContainer.innerHTML = '<div class="no-data">לא נמצאו משחקים במערכת</div>';
+                return;
+            }
+
+            const gamesHtml = games.map((game, index) => {
+                return generateGameCard(game, index + 1);
+            }).join('');
+
+            gamesContainer.innerHTML = `<div class="games-list">${gamesHtml}</div>`;
+        }
+
+        // Generate game card HTML
+        function generateGameCard(game, gameNumber) {
+            // Extract game data with fallbacks
+            const date = formatDate(game.date);
+            const player1Name = game.player1Name || 'שחקן 1';
+            const player2Name = game.player2Name || 'שחקן 2';
+            const player1Points = game.player1Points || 0;
+            const player2Points = game.player2Points || 0;
+            const player1Amount = game.player1Amount || 0;
+            const player2Amount = game.player2Amount || 0;
+            const player1Sets = game.player1Sets || 0;
+            const player2Sets = game.player2Sets || 0;
+
+            // Determine winner (player with positive amount or higher sets)
+            const player1IsWinner = player1Amount > 0 || (player1Amount === player2Amount && player1Sets > player2Sets);
+            const player2IsWinner = player2Amount > 0 || (player2Amount === player1Amount && player2Sets > player1Sets);
+
+            return `
+                <div class="game-card">
+                    <div class="game-header">
+                        <div class="game-date">${date}</div>
+                        <div class="game-number">משחק #${gameNumber}</div>
+                    </div>
+                    
+                    <div class="game-content">
+                        <!-- Players Names with VS and Sets -->
+                        <div class="desktop-only">
+                            <div class="desktop-stat-row">
+                                <div class="desktop-stat-label">שם</div>
+                                <div class="desktop-stat-values">
+                                    <span class="player-name ${player1IsWinner ? 'winner' : ''}">${player1Name}</span>
+                                    <div class="desktop-vs-spacer"></div>
+                                    <span class="player-name ${player2IsWinner ? 'winner' : ''}">${player2Name}</span>
+                                </div>
+                            </div>
+                            <div class="desktop-stat-row">
+                                <div class="desktop-stat-label">סטים</div>
+                                <div class="desktop-stat-values">
+                                    <span class="sets-display">${player1Sets}</span>
+                                    <div class="desktop-vs-spacer"></div>
+                                    <span class="sets-display">${player2Sets}</span>
+                                </div>
+                            </div>
+                            <div class="desktop-stat-row">
+                                <div class="desktop-stat-label">ניקוד</div>
+                                <div class="desktop-stat-values">
+                                    <span class="stat-value">${player1Points}</span>
+                                    <div class="desktop-vs-spacer"></div>
+                                    <span class="stat-value">${player2Points}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mobile Labels for Names and Sets -->
+                        <div class="mobile-stat-row mobile-only">
+                            <div class="mobile-stat-label">שם</div>
+                            <div class="mobile-stat-values">
+                                <span class="player-name ${player1IsWinner ? 'winner' : ''}">${player1Name}</span>
+                                <div class="mobile-vs-spacer"></div>
+                                <span class="player-name ${player2IsWinner ? 'winner' : ''}">${player2Name}</span>
+                            </div>
+                        </div>
+                        <div class="mobile-stat-row mobile-only">
+                            <div class="mobile-stat-label">סטים</div>
+                            <div class="mobile-stat-values">
+                                <span class="sets-display">${player1Sets}</span>
+                                <div class="mobile-vs-spacer"></div>
+                                <span class="sets-display">${player2Sets}</span>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Stats Layout -->
+                        <div class="desktop-stats desktop-only">
+                            <div class="desktop-stat-row">
+                                <div class="desktop-stat-label">נקודות</div>
+                                <div class="desktop-stat-values">
+                                    <span class="points-change ${player1Amount >= 0 ? 'points-gain' : 'points-loss'}">
+                                        ${player1Amount >= 0 ? '+' : ''}${player1Amount}
+                                    </span>
+                                    <div class="desktop-vs-spacer"></div>
+                                    <span class="points-change ${player2Amount >= 0 ? 'points-gain' : 'points-loss'}">
+                                        ${player2Amount >= 0 ? '+' : ''}${player2Amount}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                            
+                            <!-- Mobile Stats Layout -->
+                            <div class="mobile-stat-row mobile-only">
+                                <div class="mobile-stat-label">ניקוד</div>
+                                <div class="mobile-stat-values">
+                                    <span class="stat-value">${player1Points}</span>
+                                    <div class="mobile-vs-spacer"></div>
+                                    <span class="stat-value">${player2Points}</span>
+                                </div>
+                            </div>
+                            <div class="mobile-stat-row mobile-only">
+                                <div class="mobile-stat-label">נקודות</div>
+                                <div class="mobile-stat-values">
+                                    <span class="points-change ${player1Amount >= 0 ? 'points-gain' : 'points-loss'}">
+                                        ${player1Amount >= 0 ? '+' : ''}${player1Amount}
+                                    </span>
+                                    <div class="mobile-vs-spacer"></div>
+                                    <span class="points-change ${player2Amount >= 0 ? 'points-gain' : 'points-loss'}">
+                                        ${player2Amount >= 0 ? '+' : ''}${player2Amount}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Format date for display
+        function formatDate(dateValue) {
+            if (!dateValue) return 'תאריך לא זמין';
+            
+            try {
+                let date;
+                
+                // Handle Firestore Timestamp
+                if (dateValue && typeof dateValue.toDate === 'function') {
+                    date = dateValue.toDate();
+                }
+                // Handle string dates
+                else if (typeof dateValue === 'string') {
+                    date = new Date(dateValue);
+                }
+                // Handle Date objects
+                else if (dateValue instanceof Date) {
+                    date = dateValue;
+                }
+                // Handle timestamp numbers
+                else if (typeof dateValue === 'number') {
+                    date = new Date(dateValue);
+                }
+                else {
+                    return 'תאריך לא תקין';
+                }
+
+                // Check if date is valid
+                if (isNaN(date.getTime())) {
+                    return 'תאריך לא תקין';
+                }
+
+                // Format date in Hebrew locale
+                return date.toLocaleString('he-IL', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return 'תאריך לא תקין';
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            gamesContainer.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+
+
+        // Initialize the application
+        async function initApp() {
+            console.log('🚀 Starting Last 10 Games Application...');
+            
+            const firebaseReady = await initializeFirebase();
+            
+            if (firebaseReady) {
+                console.log('✅ Firebase ready, loading games...');
+                await loadLastGames();
+            } else {
+                console.error('❌ Firebase initialization failed');
+                gamesContainer.innerHTML = '<div class="error">שגיאה בהתחברות למסד הנתונים</div>';
+            }
+        }
+
+        // Start the application
+        initApp();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96c649f453e07d94',t:'MTc1NDczMjM5My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'973bd78154197d98',t:'MTc1NTk2NTAyNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

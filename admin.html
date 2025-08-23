@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מועדון טנ"ש אשדוד - הוספת שחקן חדש</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 10px;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+            min-height: calc(100vh - 20px);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .club-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        .player-icon {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .player-icon-right {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .animated-player {
+            animation: playerSwing 2s ease-in-out infinite;
+        }
+        
+        .animated-player-right {
+            animation: playerSwingRight 2.5s ease-in-out infinite;
+        }
+        
+        @keyframes playerSwing {
+            0% { transform: rotate(-10deg) translateY(0); }
+            25% { transform: rotate(5deg) translateY(-5px); }
+            50% { transform: rotate(15deg) translateY(-8px); }
+            75% { transform: rotate(-5deg) translateY(-3px); }
+            100% { transform: rotate(-10deg) translateY(0); }
+        }
+        
+        @keyframes playerSwingRight {
+            0% { transform: rotate(10deg) translateY(0); }
+            25% { transform: rotate(-5deg) translateY(-3px); }
+            50% { transform: rotate(-15deg) translateY(-6px); }
+            75% { transform: rotate(5deg) translateY(-4px); }
+            100% { transform: rotate(10deg) translateY(0); }
+        }
+        
+        .floating-elements {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .floating-paddle {
+            position: absolute;
+            font-size: 1.5rem;
+            opacity: 0.1;
+            animation: floatPaddle 15s linear infinite;
+        }
+
+        @keyframes floatPaddle {
+            0% {
+                transform: translateX(-50px) translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.1;
+            }
+            90% {
+                opacity: 0.1;
+            }
+            100% {
+                transform: translateX(calc(100vw + 50px)) translateY(-50px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .auth-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-section {
+            display: none;
+        }
+        
+        .form-section.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            direction: rtl;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #1e3c72;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+        }
+        
+        .form-input.error {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(30, 60, 114, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .success-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #0d47a1;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #90caf9;
+            font-size: 0.9rem;
+        }
+        
+        .info-icon {
+            margin-left: 8px;
+        }
+        
+        .form-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1e3c72;
+            text-align: center;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            width: auto;
+        }
+        
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        .nav-section {
+            text-align: center;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .nav-btn {
+            margin-bottom: 0;
+        }
+        
+        .games-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            background: #f8f9fa;
+        }
+        
+        .game-item {
+            background: white;
+            border-radius: 8px;
+            margin: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .game-date {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .game-id {
+            font-size: 0.8rem;
+            color: #999;
+            font-family: monospace;
+        }
+        
+        .players-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .player-info {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .player-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .player-points {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        
+        .player-amount {
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .player-amount.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .player-amount.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .vs-divider {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #1e3c72;
+            margin: 0 10px;
+        }
+        
+        .sets-info {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        
+        .delete-btn {
+            width: 100%;
+            padding: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+        
+        .delete-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading-message {
+            color: #666;
+            font-size: 1rem;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .club-title {
+                font-size: 1.2rem;
+            }
+            
+            .form-input {
+                padding: 12px;
+            }
+            
+            .btn {
+                padding: 12px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- COPY THIS ENTIRE SECTION TO YOUR HTML PAGES -->
+    <!-- START: Navigation Menu -->
+    <style>
+        /* Standalone menu styles - won't conflict with your existing code */
+        .standalone-nav {
+            background: #756fe9;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .standalone-nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+        }
+        
+        .standalone-nav-menu {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .standalone-nav-link {
+            text-decoration: none;
+            color: #374151;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .standalone-nav-link:hover {
+            color: #4f46e5;
+            background-color: #f0f9ff;
+        }
+        
+        .standalone-mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .standalone-mobile-toggle:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .standalone-hamburger {
+            width: 24px;
+            height: 18px;
+            position: relative;
+        }
+        
+        .standalone-hamburger span {
+            display: block;
+            height: 2px;
+            width: 100%;
+            background: #374151;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .standalone-hamburger span:last-child {
+            margin-bottom: 0;
+        }
+        
+        .standalone-hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .standalone-hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .standalone-hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+        
+        .standalone-mobile-menu {
+            display: none;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 20px;
+        }
+        
+        .standalone-mobile-menu.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .standalone-mobile-menu a {
+            display: block;
+            text-decoration: none;
+            color: #374151;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+            transition: color 0.3s ease;
+        }
+        
+        .standalone-mobile-menu a:last-child {
+            border-bottom: none;
+        }
+        
+        .standalone-mobile-menu a:hover {
+            color: #4f46e5;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .standalone-nav-menu {
+                display: none;
+            }
+            
+            .standalone-mobile-toggle {
+                display: block;
+            }
+            
+            .standalone-nav-container {
+                justify-content: space-between;
+            }
+        }
+    </style>
+    
+     <nav class="standalone-nav">
+        <div class="standalone-nav-container">
+            <ul class="standalone-nav-menu">
+                <li><a href="index.html" class="standalone-nav-link">משחקים אחרונים</a></li>
+                <li><a href="add_game.html" class="standalone-nav-link">הוספת משחק</a></li>
+                 <li><a href="group_hug.html" class="standalone-nav-link">דירוג חוג</a></li>
+                  <li><a href="group_adult.html" class="standalone-nav-link">דירוג בוגרים</a></li>
+                <li><a href="admin.html" class="standalone-nav-link">ניהול</a></li>  
+            </ul>
+            
+            <button class="standalone-mobile-toggle" id="standaloneMenuToggle">
+                <div class="standalone-hamburger" id="standaloneHamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+        </div>
+        
+        <div class="standalone-mobile-menu" id="standaloneMobileMenu">
+            <a href="index.html">משחקים אחרונים</a>
+            <a href="add_game.html">הוספת משחק</a>
+            <a href="group_hug.html">דירוג חוג</a>
+            <a href="group_adult.html">דירוג בוגרים</a>
+            <a href="admin.html">ניהול</a>
+        </div>
+    </nav>
+    
+    <script>
+        // Standalone menu functionality - won't conflict with your existing JavaScript
+        (function() {
+            const menuToggle = document.getElementById('standaloneMenuToggle');
+            const mobileMenu = document.getElementById('standaloneMobileMenu');
+            const hamburger = document.getElementById('standaloneHamburger');
+            
+            if (menuToggle && mobileMenu && hamburger) {
+                menuToggle.addEventListener('click', function() {
+                    const isVisible = mobileMenu.classList.contains('show');
+                    
+                    if (isVisible) {
+                        mobileMenu.classList.remove('show');
+                        hamburger.classList.remove('active');
+                    } else {
+                        mobileMenu.classList.add('show');
+                        hamburger.classList.add('active');
+                    }
+                });
+                
+                // Close menu when clicking on mobile links
+                const mobileLinks = mobileMenu.querySelectorAll('a');
+                mobileLinks.forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        mobileMenu.classList.remove('show');
+                        hamburger.classList.remove('active');
+                    });
+                });
+            }
+        })();
+    </script>
+    <!-- END: Navigation Menu -->
+
+
+    <div class="container">
+        <div class="header">
+            <div class="floating-elements">
+                <div class="floating-paddle" style="left: 10%; animation-delay: 0s;">🏓</div>
+                <div class="floating-paddle" style="left: 30%; animation-delay: 5s;">🏓</div>
+                <div class="floating-paddle" style="left: 50%; animation-delay: 10s;">🏓</div>
+                <div class="floating-paddle" style="left: 70%; animation-delay: 3s;">🏓</div>
+                <div class="floating-paddle" style="left: 90%; animation-delay: 8s;">🏓</div>
+            </div>
+            <div class="player-icon">
+                <span class="animated-player">🏓</span>
+            </div>
+            <div class="player-icon-right">
+                <span class="animated-player-right">🏓</span>
+            </div>
+            <h1 class="club-title">מועדון טנ"ש אשדוד</h1>
+            <p class="subtitle" id="headerSubtitle">הוספת שחקן חדש</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Navigation Section -->
+            <div class="nav-section" id="navSection">
+                <div class="form-title">
+                    🏓 מערכת ניהול מועדון
+                </div>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-primary nav-btn" onclick="showAddPlayerSection()">
+                        👤 הוספת שחקן חדש
+                    </button>
+                    <button class="btn btn-success nav-btn" onclick="showGamesSection()">
+                        🎮 ניהול משחקים
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Authentication Section -->
+            <div class="auth-section" id="authSection" style="display: none;">
+                <div class="form-title">
+                    🔐 הזנת סיסמה
+                </div>
+                
+                <div class="info-box">
+                    <span class="info-icon">ℹ️</span>
+                    יש להזין את סיסמת המנהל כדי להוסיף שחקן חדש למערכת
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="adminPassword">סיסמת מנהל</label>
+                    <input type="password" id="adminPassword" class="form-input" placeholder="הזן סיסמת מנהל">
+                    <div class="error-message" id="passwordError">סיסמה שגויה</div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="checkPassword()">
+                    <span id="authBtnText">כניסה</span>
+                    <div class="loading-spinner" id="authSpinner" style="display: none;"></div>
+                </button>
+            </div>
+            
+            <!-- Add Player Form Section -->
+            <div class="form-section" id="formSection">
+                <button class="btn back-btn" onclick="showNavSection()">
+                    ← חזרה לתפריט הראשי
+                </button>
+                
+                <div class="form-title">
+                    👤 הוספת שחקן חדש
+                </div>
+                
+                <div class="success-message" id="successMessage">
+                    <div class="success-icon">✅</div>
+                    <div><strong>השחקן נוסף בהצלחה!</strong></div>
+                    <div style="margin-top: 10px; font-size: 0.9rem;">השחקן החדש נוסף למערכת עם נקודת התחלה</div>
+                </div>
+                
+                <div class="info-box">
+                    <span class="info-icon">📝</span>
+                    השחקן יתחיל עם נקודה אחת. ניתן לבחור סיסמה או להשאיר ברירת מחדל "1234"
+                </div>
+                
+                <form id="playerForm">
+                    <div class="form-group">
+                        <label class="form-label" for="playerName">שם השחקן *</label>
+                        <input type="text" id="playerName" class="form-input" placeholder="הזן שם מלא" required>
+                        <div class="error-message" id="nameError">יש להזין שם שחקן</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="playerEmail">כתובת אימייל *</label>
+                        <input type="email" id="playerEmail" class="form-input" placeholder="example@email.com" required>
+                        <div class="error-message" id="emailError">יש להזין כתובת אימייל תקינה</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="playerPassword">סיסמת שחקן</label>
+                        <input type="text" id="playerPassword" class="form-input" placeholder="1234 (ברירת מחדל)" value="1234">
+                        <div class="error-message" id="passwordFieldError">סיסמה חייבת להכיל לפחות 4 תווים</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">השתייכות לקבוצה *</label>
+                        <div style="display: flex; gap: 20px;">
+                            <label style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="groupHug" name="groupHug">
+                                חוג
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="groupAdult" name="groupAdult">
+                                בוגרים
+                            </label>
+                        </div>
+                        <div class="error-message" id="groupError">יש לבחור לפחות קבוצה אחת</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success" id="submitBtn">
+                        <span id="submitBtnText">הוסף שחקן</span>
+                        <div class="loading-spinner" id="submitSpinner" style="display: none;"></div>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Games Management Section -->
+            <div class="form-section" id="gamesSection">
+                <button class="btn back-btn" onclick="showNavSection()">
+                    ← חזרה לתפריט הראשי
+                </button>
+                
+                <div class="form-title">
+                    🎮 ניהול משחקים
+                </div>
+                
+                <div class="info-box">
+                    <span class="info-icon">📊</span>
+                    בחר כמה משחקים להציג. ניתן למחוק משחק ולעדכן את נקודות השחקנים בהתאם
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="gamesCount">כמות משחקים לטעינה</label>
+                    <input type="number" id="gamesCount" class="form-input" placeholder="הזן מספר משחקים (או השאר ריק לכל המשחקים)" min="1" max="1000">
+                </div>
+                
+                <button class="btn btn-primary" onclick="loadGames()" style="margin-bottom: 20px;">
+                    <span id="loadBtnText">📊 טען משחקים</span>
+                    <div class="loading-spinner" id="loadSpinner" style="display: none;"></div>
+                </button>
+                
+                <div class="loading-message" id="gamesLoading" style="text-align: center; padding: 20px; display: none;">
+                    <div class="loading-spinner" style="margin: 0 auto 10px;"></div>
+                    טוען משחקים...
+                </div>
+                
+                <div class="games-container" id="gamesContainer" style="display: none;">
+                    <div class="games-list" id="gamesList">
+                        <!-- Games will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="no-games-message" id="noGamesMessage" style="display: none; text-align: center; padding: 40px; color: #666;">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🎮</div>
+                    <div style="font-size: 1.2rem; font-weight: 600;">אין משחקים להצגה</div>
+                    <div style="margin-top: 10px;">לא נמצאו משחקים במסד הנתונים</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJ3Y_5_O0yeQC3cqTRfyTPdU6GWFSq7rM",
+            projectId: "ashdodtabletennis",
+            authDomain: "ashdodtabletennis.firebaseapp.com",
+            storageBucket: "ashdodtabletennis.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const ADMIN_PASSWORD = "1416";
+        let isAuthenticated = false;
+
+        function checkPassword() {
+            const passwordInput = document.getElementById('adminPassword');
+            const password = passwordInput.value.trim();
+            const errorDiv = document.getElementById('passwordError');
+            const authBtn = document.getElementById('authBtnText');
+            const authSpinner = document.getElementById('authSpinner');
+            
+            // Clear previous errors
+            passwordInput.classList.remove('error');
+            errorDiv.classList.remove('show');
+            
+            if (!password) {
+                showError('passwordError', 'יש להזין סיסמה');
+                passwordInput.classList.add('error');
+                return;
+            }
+            
+            // Show loading
+            authBtn.style.display = 'none';
+            authSpinner.style.display = 'block';
+            
+            // Simulate checking (add small delay for UX)
+            setTimeout(() => {
+                if (password === ADMIN_PASSWORD) {
+                    isAuthenticated = true;
+                    
+                    // Check if we should show games or add player form
+                    if (window.showGamesAfterAuth) {
+                        showGamesManagement();
+                        window.showGamesAfterAuth = false;
+                    } else {
+                        showFormSection();
+                    }
+                } else {
+                    showError('passwordError', 'סיסמה שגויה');
+                    passwordInput.classList.add('error');
+                    passwordInput.value = '';
+                }
+                
+                // Hide loading
+                authBtn.style.display = 'block';
+                authSpinner.style.display = 'none';
+            }, 500);
+        }
+
+        function showFormSection() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('formSection').classList.add('active');
+        }
+
+        function showNavSection() {
+            document.getElementById('navSection').style.display = 'block';
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('formSection').classList.remove('active');
+            document.getElementById('gamesSection').classList.remove('active');
+            document.getElementById('headerSubtitle').textContent = 'מערכת ניהול מועדון';
+            isAuthenticated = false;
+        }
+
+        function showAddPlayerSection() {
+            document.getElementById('navSection').style.display = 'none';
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('headerSubtitle').textContent = 'הוספת שחקן חדש';
+        }
+
+        function showGamesSection() {
+            document.getElementById('navSection').style.display = 'none';
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('headerSubtitle').textContent = 'ניהול משחקים';
+            
+            // Set flag to show games after authentication
+            window.showGamesAfterAuth = true;
+        }
+
+        function showAuthSection() {
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('formSection').classList.remove('active');
+            document.getElementById('gamesSection').classList.remove('active');
+            
+            // Clear form
+            document.getElementById('playerForm').reset();
+            document.getElementById('playerPassword').value = '1234';
+            clearErrors();
+            hideSuccess();
+        }
+
+        function showError(elementId, message) {
+            const errorDiv = document.getElementById(elementId);
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function clearErrors() {
+            const errorMessages = document.querySelectorAll('.error-message');
+            const inputs = document.querySelectorAll('.form-input');
+            
+            errorMessages.forEach(error => error.classList.remove('show'));
+            inputs.forEach(input => input.classList.remove('error'));
+        }
+
+        function showSuccess() {
+            document.getElementById('successMessage').classList.add('show');
+            
+            // Hide success message after 5 seconds
+            setTimeout(() => {
+                hideSuccess();
+            }, 5000);
+        }
+
+        function hideSuccess() {
+            document.getElementById('successMessage').classList.remove('show');
+        }
+
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        async function addPlayer(playerData) {
+            try {
+                console.log('Adding player:', playerData);
+                
+                // Add the document to Players2 collection
+                const docRef = await db.collection('Players2').add(playerData);
+                console.log('Player added with ID:', docRef.id);
+                
+                return { success: true, id: docRef.id };
+                
+            } catch (error) {
+                console.error('Error adding player:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        // Form submission
+        document.getElementById('playerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!isAuthenticated) {
+                alert('אין הרשאה');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            const submitSpinner = document.getElementById('submitSpinner');
+            
+            // Get form values
+            const playerName = document.getElementById('playerName').value.trim();
+            const playerEmail = document.getElementById('playerEmail').value.trim();
+            const playerPassword = document.getElementById('playerPassword').value.trim() || '1234';
+            const groupHug = document.getElementById('groupHug').checked;
+            const groupAdult = document.getElementById('groupAdult').checked;
+            
+            // Clear previous errors
+            clearErrors();
+            hideSuccess();
+            
+            // Validation
+            let hasErrors = false;
+            
+            if (!playerName) {
+                showError('nameError', 'יש להזין שם שחקן');
+                document.getElementById('playerName').classList.add('error');
+                hasErrors = true;
+            }
+            
+            if (!playerEmail) {
+                showError('emailError', 'יש להזין כתובת אימייל');
+                document.getElementById('playerEmail').classList.add('error');
+                hasErrors = true;
+            } else if (!validateEmail(playerEmail)) {
+                showError('emailError', 'כתובת אימייל לא תקינה');
+                document.getElementById('playerEmail').classList.add('error');
+                hasErrors = true;
+            }
+            
+            if (playerPassword.length < 4) {
+                showError('passwordFieldError', 'סיסמה חייבת להכיל לפחות 4 תווים');
+                document.getElementById('playerPassword').classList.add('error');
+                hasErrors = true;
+            }
+            
+            if (hasErrors) {
+                return;
+            }
+            
+            // Show loading
+            submitBtn.disabled = true;
+            submitBtnText.style.display = 'none';
+            submitSpinner.style.display = 'block';
+
+            try {
+                // Check if player with same email already exists
+                const existingPlayer = await db.collection('Players2')
+                    .where('playerEmail', '==', playerEmail)
+                    .get();
+                
+                if (!existingPlayer.empty) {
+                    showError('emailError', 'שחקן עם אימייל זה כבר קיים במערכת');
+                    document.getElementById('playerEmail').classList.add('error');
+                    return;
+                }
+                
+                // Prepare player data
+                const playerData = {
+                    playerName: playerName,
+                    playerEmail: playerEmail,
+                    playerPassword: playerPassword, // User selected or default password
+                    playerPoints: 1, // Default points
+                    playerGames: 0, // Auto field
+                    groupHug: groupHug,
+                    groupAdult: groupAdult,
+                    active: true // Auto field
+                };
+                
+                // Add player to database
+                const result = await addPlayer(playerData);
+                
+                if (result.success) {
+                    console.log('Player added successfully with ID:', result.id);
+                    
+                    // Show success message
+                    showSuccess();
+                    
+                    // Clear form
+                    document.getElementById('playerForm').reset();
+                    document.getElementById('playerPassword').value = '1234';
+                    
+                    // Scroll to top to show success message
+                    document.querySelector('.main-content').scrollTop = 0;
+                    
+                } else {
+                    throw new Error(result.error || 'שגיאה לא ידועה');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`שגיאה בהוספת השחקן: ${error.message}`);
+            } finally {
+                // Hide loading
+                submitBtn.disabled = false;
+                submitBtnText.style.display = 'block';
+                submitSpinner.style.display = 'none';
+            }
+        });
+
+        // Enter key support for password
+        document.getElementById('adminPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        function showGamesManagement() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('gamesSection').classList.add('active');
+            // Don't auto-load games anymore
+        }
+
+        async function loadGames() {
+            const gamesLoading = document.getElementById('gamesLoading');
+            const gamesContainer = document.getElementById('gamesContainer');
+            const noGamesMessage = document.getElementById('noGamesMessage');
+            const gamesList = document.getElementById('gamesList');
+            const gamesCountInput = document.getElementById('gamesCount');
+            const loadBtnText = document.getElementById('loadBtnText');
+            const loadSpinner = document.getElementById('loadSpinner');
+            
+            // Get input value
+            const inputValue = gamesCountInput.value.trim();
+            const isLoadAll = !inputValue; // Empty input means load all
+            const limitCount = isLoadAll ? 1000 : parseInt(inputValue); // Use high number for "all"
+            
+            // Validate input
+            if (!isLoadAll && (isNaN(limitCount) || limitCount < 1)) {
+                alert('אנא הזן מספר תקין של משחקים לטעינה');
+                return;
+            }
+            
+            // Show loading on button
+            loadBtnText.style.display = 'none';
+            loadSpinner.style.display = 'block';
+            
+            // Show loading
+            gamesLoading.style.display = 'block';
+            gamesContainer.style.display = 'none';
+            noGamesMessage.style.display = 'none';
+            
+            try {
+                console.log(`Loading ${isLoadAll ? 'all' : limitCount} games...`);
+                
+                // First try to get games with date ordering
+                let gamesSnapshot;
+                try {
+                    if (isLoadAll) {
+                        gamesSnapshot = await db.collection('games')
+                            .orderBy('date', 'desc')
+                            .get();
+                    } else {
+                        gamesSnapshot = await db.collection('games')
+                            .orderBy('date', 'desc')
+                            .limit(limitCount)
+                            .get();
+                    }
+                } catch (dateError) {
+                    console.log('Date ordering failed, trying without ordering:', dateError.message);
+                    // If date ordering fails, get games without ordering
+                    if (isLoadAll) {
+                        gamesSnapshot = await db.collection('games').get();
+                    } else {
+                        gamesSnapshot = await db.collection('games')
+                            .limit(limitCount)
+                            .get();
+                    }
+                }
+                
+                console.log('Games query result:', gamesSnapshot.size, 'documents');
+                
+                if (gamesSnapshot.empty) {
+                    console.log('No games found in collection');
+                    gamesLoading.style.display = 'none';
+                    noGamesMessage.style.display = 'block';
+                    return;
+                }
+                
+                // Clear previous games
+                gamesList.innerHTML = '';
+                
+                // Process each game
+                const games = [];
+                gamesSnapshot.forEach(doc => {
+                    const gameData = doc.data();
+                    console.log('Game data:', doc.id, gameData);
+                    games.push({ id: doc.id, data: gameData });
+                });
+                
+                // Sort games by date if available, newest first
+                games.sort((a, b) => {
+                    const aTime = a.data.date ? new Date(a.data.date) : new Date(0);
+                    const bTime = b.data.date ? new Date(b.data.date) : new Date(0);
+                    return bTime - aTime;
+                });
+                
+                // Create game elements
+                games.forEach(game => {
+                    const gameElement = createGameElement(game.id, game.data);
+                    gamesList.appendChild(gameElement);
+                });
+                
+                // Show games container
+                gamesLoading.style.display = 'none';
+                gamesContainer.style.display = 'block';
+                
+                console.log(`Successfully loaded ${games.length} games`);
+                
+                // Update info message to show actual count loaded
+                const infoBox = document.querySelector('#gamesSection .info-box');
+                if (infoBox) {
+                    infoBox.innerHTML = `
+                        <span class="info-icon">📊</span>
+                        נטענו ${games.length} משחקים${isLoadAll ? ' (כל המשחקים)' : ` מתוך ${limitCount} שנבחרו`}. ניתן למחוק משחק ולעדכן את נקודות השחקנים בהתאם
+                    `;
+                }
+                
+                // Hide loading on button
+                loadBtnText.style.display = 'block';
+                loadSpinner.style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error loading games:', error);
+                gamesLoading.style.display = 'none';
+                
+                // Hide loading on button
+                loadBtnText.style.display = 'block';
+                loadSpinner.style.display = 'none';
+                
+                // Show more detailed error information
+                const errorMessage = `שגיאה בטעינת המשחקים: ${error.message}`;
+                console.log('Detailed error:', error);
+                
+                // Try to show some debug info
+                if (error.code === 'permission-denied') {
+                    alert('אין הרשאה לגשת לאוסף המשחקים. בדוק את הגדרות Firebase Security Rules.');
+                } else if (error.code === 'failed-precondition') {
+                    alert('שגיאה באינדקס. ייתכן שצריך ליצור אינדקס עבור timestamp בקונסול Firebase.');
+                } else {
+                    alert(errorMessage);
+                }
+            }
+        }
+
+        function createGameElement(gameId, gameData) {
+            const gameDiv = document.createElement('div');
+            gameDiv.className = 'game-item';
+            
+            // Format date if date field exists
+            let dateStr = 'תאריך לא זמין';
+            if (gameData.date) {
+                const date = new Date(gameData.date);
+                dateStr = date.toLocaleDateString('he-IL') + ' ' + date.toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'});
+            }
+            
+            // Determine winner and amounts
+            const player1Amount = gameData.player1Amount || 0;
+            const player2Amount = gameData.player2Amount || 0;
+            
+            gameDiv.innerHTML = `
+                <div class="game-header">
+                    <div class="game-date">${dateStr}</div>
+                    <div class="game-id">ID: ${gameId.substring(0, 8)}...</div>
+                </div>
+                
+                <div class="players-row">
+                    <div class="player-info">
+                        <div class="player-name">${gameData.player1Name || 'שחקן 1'}</div>
+                        <div class="player-points">נקודות: ${gameData.player1Points || 0}</div>
+                        <div class="player-amount ${player1Amount >= 0 ? 'positive' : 'negative'}">
+                            ${player1Amount >= 0 ? '+' : ''}${player1Amount}
+                        </div>
+                    </div>
+                    
+                    <div class="vs-divider">VS</div>
+                    
+                    <div class="player-info">
+                        <div class="player-name">${gameData.player2Name || 'שחקן 2'}</div>
+                        <div class="player-points">נקודות: ${gameData.player2Points || 0}</div>
+                        <div class="player-amount ${player2Amount >= 0 ? 'positive' : 'negative'}">
+                            ${player2Amount >= 0 ? '+' : ''}${player2Amount}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sets-info">
+                    סטים: ${gameData.player1Sets || 0} - ${gameData.player2Sets || 0}
+                </div>
+                
+                <button class="delete-btn" onclick="deleteGame('${gameId}', '${(gameData.player1Name || '').replace(/'/g, "\\'")}', '${(gameData.player2Name || '').replace(/'/g, "\\'")}', ${player1Amount}, ${player2Amount}, this)">
+                    🗑️ מחק משחק
+                </button>
+            `;
+            
+            return gameDiv;
+        }
+
+        async function deleteGame(gameId, player1Name, player2Name, player1Amount, player2Amount, buttonElement) {
+            console.log('Delete game function called with:', { gameId, player1Name, player2Name, player1Amount, player2Amount });
+            console.log('Proceeding with deletion immediately (no confirmation)...');
+            
+            // Find the delete button and disable it during deletion
+            const deleteBtn = buttonElement;
+            const originalText = deleteBtn.innerHTML;
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>';
+            
+            try {
+                console.log('Starting game deletion process...');
+                console.log('Game ID:', gameId);
+                console.log('Player 1:', player1Name, 'Amount to reverse:', player1Amount);
+                console.log('Player 2:', player2Name, 'Amount to reverse:', player2Amount);
+                
+                // First, get the full game data to determine who won
+                console.log('Step 1: Getting full game data...');
+                const gameDoc = await db.collection('games').doc(gameId).get();
+                if (!gameDoc.exists) {
+                    throw new Error('המשחק לא נמצא במסד הנתונים');
+                }
+                
+                const gameData = gameDoc.data();
+                console.log('Full game data:', gameData);
+                
+                const player1Sets = gameData.player1Sets || 0;
+                const player2Sets = gameData.player2Sets || 0;
+                const player1Won = player1Sets > player2Sets;
+                
+                console.log(`Game result: Player1 sets: ${player1Sets}, Player2 sets: ${player2Sets}`);
+                console.log(`Winner: ${player1Won ? player1Name : player2Name}`);
+                
+                // Delete the game document
+                console.log('Step 2: Deleting game document...');
+                await db.collection('games').doc(gameId).delete();
+                console.log('Game document deleted successfully');
+                
+                // Update Player 1
+                console.log('Step 3: Updating Player 1...');
+                const player1Query = await db.collection('Players2')
+                    .where('playerName', '==', player1Name)
+                    .get();
+                
+                if (player1Query.empty) {
+                    console.warn('Player 1 not found in database:', player1Name);
+                    throw new Error(`שחקן "${player1Name}" לא נמצא במסד הנתונים`);
+                }
+                
+                const player1Doc = player1Query.docs[0];
+                const player1Data = player1Doc.data();
+                const player1Ref = db.collection('Players2').doc(player1Doc.id);
+                
+                console.log('Player 1 current data:', player1Data);
+                
+                // Calculate new values for Player 1
+                const newPlayer1Points = (player1Data.playerPoints || 0) - player1Amount;
+                const newPlayer1Games = Math.max(0, (player1Data.playerGames || 0) - 1);
+                
+                console.log(`Player 1 points: ${player1Data.playerPoints} -> ${newPlayer1Points} (change: ${-player1Amount})`);
+                console.log(`Player 1 games: ${player1Data.playerGames} -> ${newPlayer1Games}`);
+                
+                // Find opponent slot for Player 2 in Player 1's document
+                let player1OpponentSlot = null;
+                for (let i = 1; i <= 20; i++) {
+                    const opponentName = player1Data[`playerOpponent${i}Name`];
+                    if (opponentName === player2Name) {
+                        player1OpponentSlot = i;
+                        break;
+                    }
+                }
+                
+                console.log(`Player 1 opponent slot for "${player2Name}": ${player1OpponentSlot}`);
+                
+                // Prepare Player 1 update object
+                const player1Updates = {
+                    playerPoints: newPlayer1Points,
+                    playerGames: newPlayer1Games
+                };
+                
+                // Update opponent statistics for Player 1
+                if (player1OpponentSlot) {
+                    const currentOpponentGames = player1Data[`playerOpponent${player1OpponentSlot}Games`] || 0;
+                    const currentOpponentWins = player1Data[`playerOpponent${player1OpponentSlot}Wins`] || 0;
+                    
+                    const newOpponentGames = Math.max(0, currentOpponentGames - 1);
+                    const newOpponentWins = player1Won ? Math.max(0, currentOpponentWins - 1) : currentOpponentWins;
+                    
+                    player1Updates[`playerOpponent${player1OpponentSlot}Games`] = newOpponentGames;
+                    player1Updates[`playerOpponent${player1OpponentSlot}Wins`] = newOpponentWins;
+                    
+                    console.log(`Player 1 opponent ${player1OpponentSlot} games: ${currentOpponentGames} -> ${newOpponentGames}`);
+                    console.log(`Player 1 opponent ${player1OpponentSlot} wins: ${currentOpponentWins} -> ${newOpponentWins} (player1Won: ${player1Won})`);
+                } else {
+                    console.log(`No opponent slot found for "${player2Name}" in Player 1's document`);
+                }
+                
+                // Apply Player 1 updates
+                await player1Ref.update(player1Updates);
+                console.log('Player 1 updated successfully with:', player1Updates);
+                
+                // Update Player 2
+                console.log('Step 4: Updating Player 2...');
+                const player2Query = await db.collection('Players2')
+                    .where('playerName', '==', player2Name)
+                    .get();
+                
+                if (player2Query.empty) {
+                    console.warn('Player 2 not found in database:', player2Name);
+                    throw new Error(`שחקן "${player2Name}" לא נמצא במסד הנתונים`);
+                }
+                
+                const player2Doc = player2Query.docs[0];
+                const player2Data = player2Doc.data();
+                const player2Ref = db.collection('Players2').doc(player2Doc.id);
+                
+                console.log('Player 2 current data:', player2Data);
+                
+                // Calculate new values for Player 2
+                const newPlayer2Points = (player2Data.playerPoints || 0) - player2Amount;
+                const newPlayer2Games = Math.max(0, (player2Data.playerGames || 0) - 1);
+                
+                console.log(`Player 2 points: ${player2Data.playerPoints} -> ${newPlayer2Points} (change: ${-player2Amount})`);
+                console.log(`Player 2 games: ${player2Data.playerGames} -> ${newPlayer2Games}`);
+                
+                // Find opponent slot for Player 1 in Player 2's document
+                let player2OpponentSlot = null;
+                for (let i = 1; i <= 20; i++) {
+                    const opponentName = player2Data[`playerOpponent${i}Name`];
+                    if (opponentName === player1Name) {
+                        player2OpponentSlot = i;
+                        break;
+                    }
+                }
+                
+                console.log(`Player 2 opponent slot for "${player1Name}": ${player2OpponentSlot}`);
+                
+                // Prepare Player 2 update object
+                const player2Updates = {
+                    playerPoints: newPlayer2Points,
+                    playerGames: newPlayer2Games
+                };
+                
+                // Update opponent statistics for Player 2
+                if (player2OpponentSlot) {
+                    const currentOpponentGames = player2Data[`playerOpponent${player2OpponentSlot}Games`] || 0;
+                    const currentOpponentWins = player2Data[`playerOpponent${player2OpponentSlot}Wins`] || 0;
+                    
+                    const newOpponentGames = Math.max(0, currentOpponentGames - 1);
+                    const newOpponentWins = !player1Won ? Math.max(0, currentOpponentWins - 1) : currentOpponentWins;
+                    
+                    player2Updates[`playerOpponent${player2OpponentSlot}Games`] = newOpponentGames;
+                    player2Updates[`playerOpponent${player2OpponentSlot}Wins`] = newOpponentWins;
+                    
+                    console.log(`Player 2 opponent ${player2OpponentSlot} games: ${currentOpponentGames} -> ${newOpponentGames}`);
+                    console.log(`Player 2 opponent ${player2OpponentSlot} wins: ${currentOpponentWins} -> ${newOpponentWins} (player2Won: ${!player1Won})`);
+                } else {
+                    console.log(`No opponent slot found for "${player1Name}" in Player 2's document`);
+                }
+                
+                // Apply Player 2 updates
+                await player2Ref.update(player2Updates);
+                console.log('Player 2 updated successfully with:', player2Updates);
+                
+                console.log('All updates completed successfully');
+                
+                // Show success message
+                alert('המשחק נמחק בהצלחה ונקודות השחקנים עודכנו!');
+                
+                // Reload games to reflect changes
+                console.log('Reloading games list...');
+                loadGames();
+                
+            } catch (error) {
+                console.error('Error during game deletion:', error);
+                
+                // Re-enable button on error
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalText;
+                
+                // Show detailed error message
+                let errorMessage = 'שגיאה במחיקת המשחק: ';
+                if (error.code === 'permission-denied') {
+                    errorMessage += 'אין הרשאה למחוק משחקים. בדוק את הגדרות Firebase Security Rules.';
+                } else if (error.code === 'not-found') {
+                    errorMessage += 'המשחק לא נמצא במסד הנתונים.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                alert(errorMessage);
+                console.error('Detailed error:', error);
+            }
+        }
+
+        // Test Firebase connection on page load
+        window.addEventListener('load', async () => {
+            try {
+                console.log('Testing Firebase connection...');
+                const testSnapshot = await db.collection('Players2').limit(1).get();
+                console.log('Firebase connection successful');
+            } catch (error) {
+                console.error('Firebase connection error:', error);
+                alert('בעיה בחיבור למסד הנתונים');
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96320100d53ac227',t:'MTc1MzE3NzUxMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
