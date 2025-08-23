@@ -860,7 +860,7 @@
     <style>
         /* Standalone menu styles - won't conflict with your existing code */
         .standalone-nav {
-            background: white;
+            background: #756fe9;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             position: sticky;
             top: 0;
@@ -1007,7 +1007,7 @@
     <nav class="standalone-nav">
         <div class="standalone-nav-container">
             <ul class="standalone-nav-menu">
-                <li><a href="index.html" class="standalone-nav-link">דירוג</a></li>
+                <li><a href="index.html" class="standalone-nav-link">דירוג חוג</a></li>
                 <li><a href="add_game.html" class="standalone-nav-link">הוספת משחק</a></li>
             </ul>
             
@@ -1021,7 +1021,7 @@
         </div>
         
         <div class="standalone-mobile-menu" id="standaloneMobileMenu">
-            <a href="index.html">דירוג</a>
+            <a href="index.html">דירוג חוג</a>
             <a href="add_game.html">הוספת משחק</a>
         </div>
     </nav>
@@ -1284,9 +1284,10 @@
                     const playerName = data.playerName;
                     const playerPoints = data.playerPoints;
                     
-                    // Only include players with valid names and active status
+                    // Only include players with valid names, active status, and relevant group
                     const isActive = data.active === true;
-                    if (playerName && playerName.trim() !== '' && isActive) {
+                    const isGroup = data.group_hug === true;
+                    if (playerName && playerName.trim() !== '' && isActive && isGroup) {
                         players.push({
                             id: doc.id,
                             name: playerName.trim(),
