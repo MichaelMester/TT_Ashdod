@@ -51,25 +51,41 @@
             opacity: 0.9;
             font-weight: 400;
         }
+
+        .mobile-menu-label {
+          font-size: 16px;
+          color: #e9ebf0;
+          display: block;
+          width: 100%;           /* span the whole row */
+          text-align: center;    /* center text */
+          transform: translateX(15px); /* move 20px to the right */
+        }
+        @media (min-width: 769px) {
+            .mobile-menu-label {
+                display: none; /* Hide label on desktop */
+            }
+        }
         
         .player-icon {
             position: absolute;
-            top: 15px;
+            top: 10px;
             left: 15px;
             font-size: 1.8rem;
             display: flex;
             align-items: center;
             gap: 6px;
+            transform: translateX(25px); /* move 20px to the right */
         }
         
         .player-icon-right {
             position: absolute;
-            top: 15px;
+            top: 10px;
             right: 15px;
             font-size: 1.8rem;
             display: flex;
             align-items: center;
             gap: 6px;
+            transform: translateX(-45px); /* move 20px to the left */
         }
         
         .animated-player {
@@ -493,7 +509,7 @@
     <style>
         /* Standalone menu styles - won't conflict with your existing code */
         .standalone-nav {
-            background: #756fe9;
+            background: #051b46;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             position: sticky;
             top: 0;
@@ -521,7 +537,7 @@
         
         .standalone-nav-link {
             text-decoration: none;
-            color: #374151;
+            color: #e1e6ee;
             font-size: 18px;
             font-weight: 500;
             padding: 10px 20px;
@@ -536,7 +552,7 @@
         
         .standalone-mobile-toggle {
             display: none;
-            background: none;
+            background: white;
             border: none;
             cursor: pointer;
             padding: 8px;
@@ -654,6 +670,23 @@
                     <span></span>
                 </div>
             </button>
+
+            <div class="floating-elements">
+                <div class="floating-paddle" style="left: 10%; animation-delay: 0s;">🏓</div>
+                <div class="floating-paddle" style="left: 30%; animation-delay: 5s;">🏓</div>
+                <div class="floating-paddle" style="left: 50%; animation-delay: 10s;">🏓</div>
+                <div class="floating-paddle" style="left: 70%; animation-delay: 3s;">🏓</div>
+                <div class="floating-paddle" style="left: 90%; animation-delay: 8s;">🏓</div>
+            </div>
+            <div class="player-icon">
+                <span class="animated-player">🏓</span>
+            </div>
+            <div class="player-icon-right">
+                <span class="animated-player-right">🏓</span>
+            </div>
+
+            <h1 class="mobile-menu-label">מועדון טנ"ש אשדוד</h1>
+
         </div>
         
         <div class="standalone-mobile-menu" id="standaloneMobileMenu">
@@ -700,6 +733,7 @@
 
 
     <div class="container">
+        <!--
         <div class="header">
             <div class="floating-elements">
                 <div class="floating-paddle" style="left: 10%; animation-delay: 0s;">🏓</div>
@@ -716,7 +750,7 @@
             </div>
             <h1 class="club-title">מועדון טנ"ש אשדוד</h1>
             <p class="subtitle" id="headerSubtitle">הוספת שחקן חדש</p>
-        </div>
+        </div> -->
 
         <div class="main-content">
             <!-- Navigation Section -->
