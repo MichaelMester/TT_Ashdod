@@ -836,11 +836,11 @@
                         <label class="form-label">השתייכות לקבוצה *</label>
                         <div style="display: flex; gap: 20px;">
                             <label style="display: flex; align-items: center; gap: 6px;">
-                                <input type="checkbox" id="groupHug" name="groupHug">
+                                <input type="checkbox" id="group_hug" name="group_hug">
                                 חוג
                             </label>
                             <label style="display: flex; align-items: center; gap: 6px;">
-                                <input type="checkbox" id="groupAdult" name="groupAdult">
+                                <input type="checkbox" id="group_adult" name="group_adult">
                                 בוגרים
                             </label>
                         </div>
@@ -985,10 +985,12 @@
         function showGamesSection() {
             // Set flag to show games after authentication
             window.showGamesAfterAuth = true;
-            
+
             document.getElementById('navSection').style.display = 'none';
             document.getElementById('authSection').style.display = 'block';
             document.getElementById('headerSubtitle').textContent = 'ניהול משחקים';
+            
+            
         }
 
         function showAuthSection() {
@@ -1068,8 +1070,8 @@
             const playerName = document.getElementById('playerName').value.trim();
             const playerEmail = document.getElementById('playerEmail').value.trim();
             const playerPassword = document.getElementById('playerPassword').value.trim() || '1234';
-            const groupHug = document.getElementById('groupHug').checked;
-            const groupAdult = document.getElementById('groupAdult').checked;
+            const group_hug = document.getElementById('group_hug').checked;
+            const group_adult = document.getElementById('group_adult').checked;
             
             // Clear previous errors
             clearErrors();
@@ -1128,8 +1130,8 @@
                     playerPassword: playerPassword, // User selected or default password
                     playerPoints: 1, // Default points
                     playerGames: 0, // Auto field
-                    groupHug: groupHug,
-                    groupAdult: groupAdult,
+                    group_hug: group_hug,
+                    group_adult: group_adult,
                     active: true // Auto field
                 };
                 
@@ -1571,4 +1573,3 @@
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96320100d53ac227',t:'MTc1MzE3NzUxMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
-
