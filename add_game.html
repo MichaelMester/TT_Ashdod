@@ -1230,6 +1230,12 @@
                     player2Sets: opponentSetsValue.toString()
                 });
                 
+                // Increment total games counter in Statistics collection
+                const totalGamesRef = db.collection('Statistics').doc('Total_Games');
+                await totalGamesRef.set({
+                    total_games: firebase.firestore.FieldValue.increment(1)
+                }, { merge: true });
+                
                 // Update player info display first
                 const newPlayerPoints = playerPoints + pointsCalc.playerGain;
                 const newPlayerGames = (currentPlayerData.playerGames || 0) + 1;
