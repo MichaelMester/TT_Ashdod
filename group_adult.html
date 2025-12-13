@@ -1274,11 +1274,11 @@
             const totalPlayers = players.length;
             const topScore = players[0]?.points || 0;
             statsBar.innerHTML = `
-                <span> שחקנים: <strong>${totalPlayers}</strong></span>
-                <span style="margin: 0 15px;">|</span>
-                <span> משחקים: <strong>${totalGames}</strong></span>
-                <span style="margin: 0 15px;">|</span>
-                <span>ניקוד מוביל: <strong>${topScore}</strong></span>
+                <span>שחקנים: <strong>${totalPlayers}</strong></span>
+                <span style="margin: 0 8px;">|</span>
+                <span>משחקים: <strong>${totalGames}</strong></span>
+                <span style="margin: 0 8px;">|</span>
+                <span>ניקוד: <strong>${topScore}</strong></span>
             `;
             
             // Generate player cards
