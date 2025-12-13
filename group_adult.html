@@ -1343,7 +1343,7 @@
                 
                 // Get total games count from Total_Games document
                 console.log('Loading total games count...');
-                const totalGamesDoc = await db.collection('games').doc('Total_Games').get();
+                const totalGamesDoc = await db.collection('Statistics').doc('Total_Games').get();
                 const totalGames = totalGamesDoc.exists ? (totalGamesDoc.data().total_games || 0) : 0;
                 console.log(`Found ${totalGames} total games`);
                 
