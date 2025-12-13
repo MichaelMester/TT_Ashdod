@@ -1402,6 +1402,13 @@
                 await db.collection('games').doc(gameId).delete();
                 console.log('Game document deleted successfully');
                 
+                // Decrement total games counter in Statistics collection
+                const totalGamesRef = db.collection('Statistics').doc('Total_Games');
+                await totalGamesRef.set({
+                    total_games: firebase.firestore.FieldValue.increment(-1)
+                }, { merge: true });
+                console.log('Total games counter decremented');
+                
                 // Update Player 1
                 console.log('Step 3: Updating Player 1...');
                 const player1Query = await db.collection('Players2')

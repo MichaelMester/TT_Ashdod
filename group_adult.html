@@ -1258,7 +1258,7 @@
             }
         }
 
-        function displayPlayers(players) {
+        function displayPlayers(players, totalGames = 0) {
             const playersList = document.getElementById('playersList');
             const statsBar = document.getElementById('statsBar');
             
@@ -1275,6 +1275,8 @@
             const topScore = players[0]?.points || 0;
             statsBar.innerHTML = `
                 <span>סה"כ שחקנים: <strong>${totalPlayers}</strong></span>
+                <span style="margin: 0 15px;">|</span>
+                <span>סה"כ משחקים: <strong>${totalGames}</strong></span>
                 <span style="margin: 0 15px;">|</span>
                 <span>ניקוד מוביל: <strong>${topScore}</strong></span>
             `;
@@ -1338,7 +1340,14 @@
                 });
                 
                 console.log('Processed players:', players);
-                displayPlayers(players);
+                
+                // Get total games count from Total_Games document
+                console.log('Loading total games count...');
+                const totalGamesDoc = await db.collection('games').doc('Total_Games').get();
+                const totalGames = totalGamesDoc.exists ? (totalGamesDoc.data().total_games || 0) : 0;
+                console.log(`Found ${totalGames} total games`);
+                
+                displayPlayers(players, totalGames);
                 
             } catch (error) {
                 console.error('Error loading players:', error);
