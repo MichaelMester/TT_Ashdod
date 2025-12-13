@@ -1141,7 +1141,7 @@
                 <div class="player-stats-summary" id="playerStatsSummary">
                     <div class="stat-summary-item">
                         <div class="stat-summary-value" id="totalGames">-</div>
-                        <div class="stat-summary-label">סה"כ משחקים</div>
+                        <div class="stat-summary-label"> משחקים</div>
                     </div>
                     <div class="stat-summary-item">
                         <div class="stat-summary-value" id="totalWins">-</div>
@@ -1274,9 +1274,9 @@
             const totalPlayers = players.length;
             const topScore = players[0]?.points || 0;
             statsBar.innerHTML = `
-                <span>סה"כ שחקנים: <strong>${totalPlayers}</strong></span>
+                <span> שחקנים: <strong>${totalPlayers}</strong></span>
                 <span style="margin: 0 15px;">|</span>
-                <span>סה"כ משחקים: <strong>${totalGames}</strong></span>
+                <span> משחקים: <strong>${totalGames}</strong></span>
                 <span style="margin: 0 15px;">|</span>
                 <span>ניקוד מוביל: <strong>${topScore}</strong></span>
             `;
@@ -1823,3 +1823,4 @@
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'961afd45e575c22f',t:'MTc1MjkzNjE4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
