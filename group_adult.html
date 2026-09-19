@@ -1179,6 +1179,7 @@
             collection,
             doc,
             getDoc,
+            getDocs,
             initializeFirestore,
             limit,
             onSnapshot,
@@ -1281,7 +1282,7 @@
             }
         }
 
-        function displayPlayers(players, totalGames = 0) {
+        function displayPlayers(players) {
             const playersList = document.getElementById('playersList');
             const statsBar = document.getElementById('statsBar');
             
@@ -1297,11 +1298,7 @@
             const totalPlayers = players.length;
             const topScore = players[0]?.points || 0;
             statsBar.innerHTML = `
-                <span>שחקנים: <strong>${totalPlayers}</strong></span>
-                <span style="margin: 0 8px;">|</span>
-                <span>משחקים: <strong>${totalGames}</strong></span>
-                <span style="margin: 0 8px;">|</span>
-                <span>ניקוד: <strong>${topScore}</strong></span>
+                <span>דירוג בוגרים</span>
             `;
             
             // Generate player cards
@@ -1368,13 +1365,13 @@
                 console.log('Processed players:', players);
                 
                 // Render players immediately; the statistics counter can arrive separately.
-                displayPlayers(players, 0);
+                displayPlayers(players);
 
+                /*
                 const totalGamesDoc = await getDoc(doc(db, 'Statistics', 'Total_Games'));
                 logFirestoreRead('Statistics/Total_Games', totalGamesDoc);
                 const totalGames = totalGamesDoc.exists ? (totalGamesDoc.data().total_games || 0) : 0;
-                const totalGamesElement = document.querySelector('#statsBar span:nth-child(3) strong');
-                if (totalGamesElement) totalGamesElement.textContent = totalGames;
+                */
                 
                 } catch (error) {
                     console.error('Error loading players:', error);
