@@ -990,6 +990,10 @@
         let app = null;
         let db = null;
 
+        function logFirestoreRead(label, snapshot) {
+            console.log(`Firestore read - ${label}: ${snapshot.size} document(s)`);
+        }
+
         // DOM elements
         const gamesContainer = document.getElementById('gamesContainer');
 
@@ -1002,7 +1006,8 @@
                 db = getFirestore(app);
 
                 // Test connection by trying to access the games collection
-                await getDocs(query(collection(db, 'games'), limit(1)));
+                const testSnapshot = await getDocs(query(collection(db, 'games'), limit(1)));
+                logFirestoreRead('games connection test', testSnapshot);
                 
                 console.log('✅ Firebase connected successfully');
                 return true;
@@ -1026,6 +1031,7 @@
                 const gamesRef = collection(db, 'games');
                 const q = query(gamesRef, orderBy('date', 'desc'), limit(10));
                 const snapshot = await getDocs(q);
+                logFirestoreRead('last games', snapshot);
                 
                 const games = [];
                 snapshot.forEach((doc) => {

@@ -885,6 +885,11 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        function logFirestoreRead(label, snapshot) {
+            const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
+            console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
+        }
+
         // Points calculation table
         const pointsTable = [
             { range: [0, 25], higherWin: 9, higherLose: -5, lowerWin: 10, lowerLose: -5 },
@@ -928,6 +933,7 @@
                     .where('playerEmail', '==', email)
                     .where('playerPassword', '==', password)
                     .get();
+                logFirestoreRead('player login', playersSnapshot);
                 
                 if (playersSnapshot.empty) {
                     showError('passwordError', 'אימייל או סיסמה שגויים');
@@ -961,6 +967,7 @@
                 const playersSnapshot = await db.collection('Players2')
                     .where('active', '==', true)
                     .get();
+                logFirestoreRead('active players', playersSnapshot);
                 
                 allPlayers = playersSnapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -1071,6 +1078,7 @@
         async function updateOpponentStats(playerId, opponentName) {
             try {
                 const playerDoc = await db.collection('Players2').doc(playerId).get();
+                logFirestoreRead('player opponent stats', playerDoc);
                 const playerData = playerDoc.data();
                 
                 // Check existing opponents (playerOpponent1Name to playerOpponent500Name)
@@ -1114,6 +1122,7 @@
         async function updateOpponentOpponentStats(opponentId, playerName) {
             try {
                 const opponentDoc = await db.collection('Players2').doc(opponentId).get();
+                logFirestoreRead('opponent stats', opponentDoc);
                 const opponentData = opponentDoc.data();
                 
                 // Check if player already exists in opponent's opponent list
@@ -1177,11 +1186,13 @@
             try {
                 // Get fresh data from database to ensure we have latest points
                 const currentPlayerDoc = await db.collection('Players2').doc(currentPlayer.id).get();
+                logFirestoreRead('current player before game', currentPlayerDoc);
                 const currentPlayerData = currentPlayerDoc.data();
                 const playerPoints = currentPlayerData.playerPoints || 0;
                 
                 // Get fresh opponent data from database
                 const opponentDoc = await db.collection('Players2').doc(selectedOpponent.id).get();
+                logFirestoreRead('opponent before game', opponentDoc);
                 const freshOpponentData = opponentDoc.data();
                 const opponentPoints = freshOpponentData.playerPoints || 0;
                 
@@ -1360,7 +1371,8 @@
         window.addEventListener('load', async () => {
             try {
                 console.log('Testing Firebase connection...');
-                await db.collection('Players2').limit(1).get();
+                const testSnapshot = await db.collection('Players2').limit(1).get();
+                logFirestoreRead('Players2 connection test', testSnapshot);
                 console.log('Firebase connection successful');
                 
                 // Load saved credentials

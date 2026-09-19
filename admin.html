@@ -913,6 +913,11 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+
+        function logFirestoreRead(label, snapshot) {
+            const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
+            console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
+        }
         
         const ADMIN_PASSWORD = "1416";
         let isAuthenticated = false;
@@ -1116,6 +1121,7 @@
                 const existingPlayer = await db.collection('Players2')
                     .where('playerEmail', '==', playerEmail)
                     .get();
+                logFirestoreRead('existing player check', existingPlayer);
                 
                 if (!existingPlayer.empty) {
                     showError('emailError', 'שחקן עם אימייל זה כבר קיים במערכת');
@@ -1237,6 +1243,7 @@
                 }
                 
                 console.log('Games query result:', gamesSnapshot.size, 'documents');
+                logFirestoreRead('games management', gamesSnapshot);
                 
                 if (gamesSnapshot.empty) {
                     console.log('No games found in collection');
@@ -1383,6 +1390,7 @@
                 // First, get the full game data to determine who won
                 console.log('Step 1: Getting full game data...');
                 const gameDoc = await db.collection('games').doc(gameId).get();
+                logFirestoreRead('game before deletion', gameDoc);
                 if (!gameDoc.exists) {
                     throw new Error('המשחק לא נמצא במסד הנתונים');
                 }
@@ -1414,6 +1422,7 @@
                 const player1Query = await db.collection('Players2')
                     .where('playerName', '==', player1Name)
                     .get();
+                logFirestoreRead('player 1 deletion lookup', player1Query);
                 
                 if (player1Query.empty) {
                     console.warn('Player 1 not found in database:', player1Name);
@@ -1477,6 +1486,7 @@
                 const player2Query = await db.collection('Players2')
                     .where('playerName', '==', player2Name)
                     .get();
+                logFirestoreRead('player 2 deletion lookup', player2Query);
                 
                 if (player2Query.empty) {
                     console.warn('Player 2 not found in database:', player2Name);
@@ -1571,6 +1581,7 @@
             try {
                 console.log('Testing Firebase connection...');
                 const testSnapshot = await db.collection('Players2').limit(1).get();
+                logFirestoreRead('Players2 connection test', testSnapshot);
                 console.log('Firebase connection successful');
             } catch (error) {
                 console.error('Firebase connection error:', error);

@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מועדון טנ"ש אשדוד - דירוג שחקנים</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
 
         .mobile-menu-label {
@@ -1175,7 +1173,22 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import {
+            collection,
+            doc,
+            getDoc,
+            getDocs,
+            initializeFirestore,
+            limit,
+            onSnapshot,
+            orderBy,
+            persistentLocalCache,
+            query,
+            where
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCJ3Y_5_O0yeQC3cqTRfyTPdU6GWFSq7rM",
@@ -1187,10 +1200,20 @@
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        const app = initializeApp(firebaseConfig);
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache()
+        });
+
+        function logFirestoreRead(label, snapshot) {
+            const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
+            const source = snapshot.metadata?.fromCache ? 'cache' : 'server';
+            const changedCount = typeof snapshot.docChanges === 'function' ? snapshot.docChanges().length : documentCount;
+            console.log(`Firestore read - ${label}: ${documentCount} document(s), ${changedCount} changed, source: ${source}`);
+        }
 
         let isLoading = false;
+        let playersUnsubscribe = null;
 
         function showLoading() {
             const playersList = document.getElementById('playersList');
@@ -1305,23 +1328,26 @@
             playersList.innerHTML = playersHTML;
         }
 
-        async function loadPlayers() {
-            if (isLoading) return;
-            
+        function loadPlayers() {
+            if (playersUnsubscribe) return;
+
             isLoading = true;
             showLoading();
-            
-            try {
-                console.log('Loading players from Players2 collection...');
-                
-                const playersSnapshot = await db.collection('Players2').get();
-                console.log(`Found ${playersSnapshot.size} documents`);
+
+            const playersQuery = query(
+                collection(db, 'Players2'),
+                where('active', '==', true),
+                where('group_adult', '==', true)
+            );
+
+            playersUnsubscribe = onSnapshot(playersQuery, async (playersSnapshot) => {
+                try {
+                logFirestoreRead('Players2', playersSnapshot);
                 
                 const players = [];
                 
                 playersSnapshot.forEach((doc) => {
                     const data = doc.data();
-                    console.log('Player data:', data);
                     
                     const playerName = data.playerName;
                     const playerPoints = data.playerPoints;
@@ -1343,19 +1369,26 @@
                 
                 // Get total games count from Total_Games document
                 console.log('Loading total games count...');
-                const totalGamesDoc = await db.collection('Statistics').doc('Total_Games').get();
+                const totalGamesDoc = await getDoc(doc(db, 'Statistics', 'Total_Games'));
+                logFirestoreRead('Statistics/Total_Games', totalGamesDoc);
                 const totalGames = totalGamesDoc.exists ? (totalGamesDoc.data().total_games || 0) : 0;
                 console.log(`Found ${totalGames} total games`);
                 
                 displayPlayers(players, totalGames);
                 
-            } catch (error) {
-                console.error('Error loading players:', error);
+                } catch (error) {
+                    console.error('Error loading players:', error);
+                    showError(error.message || 'שגיאה לא ידועה');
+                } finally {
+                    isLoading = false;
+                    hideLoading();
+                }
+            }, (error) => {
+                console.error('Error listening for player changes:', error);
                 showError(error.message || 'שגיאה לא ידועה');
-            } finally {
                 isLoading = false;
                 hideLoading();
-            }
+            });
         }
 
         // Test Firebase connection and load players on page load
@@ -1364,11 +1397,12 @@
                 console.log('Testing Firebase connection...');
                 
                 // Test connection
-                const testSnapshot = await db.collection('Players2').limit(1).get();
+                const testSnapshot = await getDocs(query(collection(db, 'Players2'), limit(1)));
+                logFirestoreRead('Players2 connection test', testSnapshot);
                 console.log('Firebase connection successful');
                 
                 // Load players
-                await loadPlayers();
+                loadPlayers();
                 
             } catch (error) {
                 console.error('Firebase connection error:', error);
@@ -1473,10 +1507,12 @@
                 console.log('Timestamp filter:', oneMonthAgoTimestamp);
                 
                 // Query games collection
-                const gamesSnapshot = await db.collection('games')
-                    .orderBy('date', 'desc')
-                    .limit(100)
-                    .get();
+                const gamesSnapshot = await getDocs(query(
+                    collection(db, 'games'),
+                    orderBy('date', 'desc'),
+                    limit(100)
+                ));
+                logFirestoreRead('games for player', gamesSnapshot);
                 
                 const playerGames = [];
                 
@@ -1586,7 +1622,8 @@
                 playerGames.sort((a, b) => b.date - a.date);
                 
                 // Get opponent stats from player document
-                const playerDoc = await db.collection('Players2').doc(currentPlayer.id).get();
+                const playerDoc = await getDoc(doc(db, 'Players2', currentPlayer.id));
+                logFirestoreRead('current player statistics', playerDoc);
                 const playerData = playerDoc.exists ? playerDoc.data() : {};
                 
                 // Build opponent stats map from player document
@@ -1705,14 +1742,14 @@
                 console.log('Loading stats for player ID:', playerId);
                 
                 // Get player document
-                const playerDoc = await db.collection('Players2').doc(playerId).get();
+                const playerDoc = await getDoc(doc(db, 'Players2', playerId));
+                logFirestoreRead('player statistics', playerDoc);
                 
                 if (!playerDoc.exists) {
                     throw new Error('שחקן לא נמצא');
                 }
                 
                 const playerData = playerDoc.data();
-                console.log('Player data:', playerData);
                 
                 // Get total games from playerGames field
                 const totalGames = playerData.playerGames || 0;
@@ -1820,6 +1857,10 @@
                 closePlayerModal();
             }
         });
+
+        window.openPlayerModal = openPlayerModal;
+        window.closePlayerModal = closePlayerModal;
+        window.switchTab = switchTab;
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'961afd45e575c22f',t:'MTc1MjkzNjE4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
