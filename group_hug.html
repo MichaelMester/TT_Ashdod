@@ -1178,7 +1178,6 @@
             collection,
             doc,
             getDoc,
-            getDocs,
             initializeFirestore,
             limit,
             onSnapshot,
@@ -1367,14 +1366,14 @@
                 
                 console.log('Processed players:', players);
                 
-                // Get total games count from Total_Games document
-                console.log('Loading total games count...');
+                // Render players immediately; the statistics counter can arrive separately.
+                displayPlayers(players, 0);
+
                 const totalGamesDoc = await getDoc(doc(db, 'Statistics', 'Total_Games'));
                 logFirestoreRead('Statistics/Total_Games', totalGamesDoc);
                 const totalGames = totalGamesDoc.exists ? (totalGamesDoc.data().total_games || 0) : 0;
-                console.log(`Found ${totalGames} total games`);
-                
-                displayPlayers(players, totalGames);
+                const totalGamesElement = document.querySelector('#statsBar span:nth-child(3) strong');
+                if (totalGamesElement) totalGamesElement.textContent = totalGames;
                 
                 } catch (error) {
                     console.error('Error loading players:', error);
@@ -1391,25 +1390,8 @@
             });
         }
 
-        // Test Firebase connection and load players on page load
-        window.addEventListener('load', async () => {
-            try {
-                console.log('Testing Firebase connection...');
-                
-                // Test connection
-                const testSnapshot = await getDocs(query(collection(db, 'Players2'), limit(1)));
-                logFirestoreRead('Players2 connection test', testSnapshot);
-                console.log('Firebase connection successful');
-                
-                // Load players
-                loadPlayers();
-                
-            } catch (error) {
-                console.error('Firebase connection error:', error);
-                showError('בעיה בחיבור למסד הנתונים');
-                hideLoading();
-            }
-        });
+        // Start immediately; this script runs after the ranking elements exist.
+        loadPlayers();
 
         // Add pull-to-refresh functionality for mobile
         let startY = 0;
