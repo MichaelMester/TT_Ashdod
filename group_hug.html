@@ -1182,6 +1182,7 @@
             initializeFirestore,
             limit,
             onSnapshot,
+            or,
             orderBy,
             persistentLocalCache,
             query,
@@ -1496,22 +1497,19 @@
             `;
             
             try {
-                // Calculate date one month ago
-                const oneMonthAgo = new Date();
-                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-                const oneMonthAgoTimestamp = oneMonthAgo.getTime();
-                
                 console.log('Loading games for player:', playerName);
-                console.log('Date filter:', oneMonthAgo);
-                console.log('Timestamp filter:', oneMonthAgoTimestamp);
                 
-                // Query games collection
+                // Query only the five most recent games involving this player.
                 const gamesSnapshot = await getDocs(query(
                     collection(db, 'games'),
+                    or(
+                        where('player1Name', '==', playerName),
+                        where('player2Name', '==', playerName)
+                    ),
                     orderBy('date', 'desc'),
-                    limit(100)
+                    limit(5)
                 ));
-                logFirestoreRead('games for player', gamesSnapshot);
+                logFirestoreRead('last 5 games for player', gamesSnapshot);
                 
                 const playerGames = [];
                 
@@ -1610,8 +1608,8 @@
                     gamesTab.innerHTML = `
                         <div class="no-data">
                             <div style="font-size: 2rem; margin-bottom: 15px;"><span class="ping-pong-icon">🏓</span></div>
-                            <div><strong>אין משחקים בחודש האחרון</strong></div>
-                            <div style="margin-top: 10px; font-size: 0.9rem;">לא נמצאו משחקים עבור השחקן בחודש האחרון</div>
+                            <div><strong>אין משחקים</strong></div>
+                            <div style="margin-top: 10px; font-size: 0.9rem;">לא נמצאו משחקים עבור השחקן</div>
                         </div>
                     `;
                     return;
