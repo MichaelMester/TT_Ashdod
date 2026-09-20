@@ -502,6 +502,7 @@
             }
         }
     </style>
+    <script src="auth-guard.js"></script>
 </head>
 <body>
     <!-- COPY THIS ENTIRE SECTION TO YOUR HTML PAGES -->
@@ -1146,6 +1147,7 @@
                 
                 if (result.success) {
                     console.log('Player added successfully with ID:', result.id);
+                    localStorage.removeItem('activePlayersCache');
                     
                     // Show success message
                     showSuccess();

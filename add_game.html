@@ -142,15 +142,7 @@
             padding: 30px;
         }
         
-        .login-section {
-            display: block;
-        }
-        
         .game-section {
-            display: none;
-        }
-        
-        .game-section.active {
             display: block;
         }
         
@@ -527,6 +519,7 @@
             }
         }
     </style>
+    <script src="auth-guard.js"></script>
 </head>
 <body>
     <!-- COPY THIS ENTIRE SECTION TO YOUR HTML PAGES -->
@@ -766,35 +759,6 @@
         </div> -->
         
         <div class="main-content">
-            <!-- Login Section -->
-            <div class="login-section" id="loginSection">
-                <div class="form-title">
-                    🔐 כניסת שחקן
-                </div>
-                
-                <div class="info-box">
-                    <span>ℹ️</span>
-                    הזן את פרטי הכניסה שלך כדי להוסיף משחקים שזכית בהם
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="playerEmail">כתובת אימייל</label>
-                    <input type="email" id="playerEmail" class="form-input" placeholder="הזן את האימייל שלך">
-                    <div class="error-message" id="emailError">יש להזין כתובת אימייל תקינה</div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="playerPassword">סיסמה</label>
-                    <input type="password" id="playerPassword" class="form-input" placeholder="הזן את הסיסמה שלך">
-                    <div class="error-message" id="passwordError">יש להזין סיסמה</div>
-                </div>
-                
-                <button class="btn btn-primary" onclick="loginPlayer()">
-                    <span id="loginBtnText">כניסה</span>
-                    <div class="loading-spinner" id="loginSpinner" style="display: none;"></div>
-                </button>
-            </div>
-            
             <!-- Game Addition Section -->
             <div class="game-section" id="gameSection">
 
@@ -908,69 +872,36 @@
         let allPlayers = [];
         let selectedOpponent = null;
         let opponentSetsValue = 0;
-
-        // Login functionality
-        async function loginPlayer() {
-            const email = document.getElementById('playerEmail').value.trim().toLowerCase();
-            const password = document.getElementById('playerPassword').value.trim();
-            const loginBtn = document.getElementById('loginBtnText');
-            const loginSpinner = document.getElementById('loginSpinner');
-            
-            clearErrors();
-            
-            if (!email || !password) {
-                if (!email) showError('emailError', 'יש להזין כתובת אימייל');
-                if (!password) showError('passwordError', 'יש להזין סיסמה');
-                return;
-            }
-            
-            // Show loading
-            loginBtn.style.display = 'none';
-            loginSpinner.style.display = 'block';
-            
-            try {
-                const playersSnapshot = await db.collection('Players2')
-                    .where('playerEmail', '==', email)
-                    .where('playerPassword', '==', password)
-                    .get();
-                logFirestoreRead('player login', playersSnapshot);
-                
-                if (playersSnapshot.empty) {
-                    showError('passwordError', 'אימייל או סיסמה שגויים');
-                    return;
-                }
-                
-                currentPlayer = playersSnapshot.docs[0];
-                const playerData = currentPlayer.data();
-                
-                // Save login credentials for next time
-                localStorage.setItem('playerEmail', email);
-                localStorage.setItem('playerPassword', password);
-                
-                // Load all players for opponent selection
-                await loadAllPlayers();
-                
-                // Show game section
-                showGameSection(playerData);
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                alert('שגיאה בכניסה למערכת');
-            } finally {
-                loginBtn.style.display = 'block';
-                loginSpinner.style.display = 'none';
-            }
-        }
+        const ACTIVE_PLAYERS_CACHE_KEY = 'activePlayersCache';
 
         async function loadAllPlayers() {
             try {
+                const cachedPlayers = localStorage.getItem(ACTIVE_PLAYERS_CACHE_KEY);
+                if (cachedPlayers) {
+                    const cachedPlayerList = JSON.parse(cachedPlayers);
+                    allPlayers = cachedPlayerList
+                        .filter(player => player.id !== currentPlayer.id)
+                        .sort((a, b) => a.playerName.localeCompare(b.playerName, 'he'));
+                    logFirestoreRead('active players from cache', { size: allPlayers.length });
+                    return;
+                }
+
                 const playersSnapshot = await db.collection('Players2')
                     .where('active', '==', true)
                     .get();
                 logFirestoreRead('active players', playersSnapshot);
-                
-                allPlayers = playersSnapshot.docs
+
+                const activePlayers = playersSnapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .map(player => ({
+                        id: player.id,
+                        playerName: player.playerName,
+                        playerPoints: player.playerPoints || 0,
+                        playerGames: player.playerGames || 0
+                    }));
+                localStorage.setItem(ACTIVE_PLAYERS_CACHE_KEY, JSON.stringify(activePlayers));
+
+                allPlayers = activePlayers
                     .filter(player => player.id !== currentPlayer.id)
                     .sort((a, b) => a.playerName.localeCompare(b.playerName, 'he'));
                 
@@ -980,7 +911,6 @@
         }
 
         function showGameSection(playerData) {
-            document.getElementById('loginSection').style.display = 'none';
             document.getElementById('gameSection').classList.add('active');
             
             // Update player info display
@@ -1217,6 +1147,15 @@
                 if (opponentIndex !== -1) {
                     allPlayers[opponentIndex].playerPoints = newOpponentPoints;
                     allPlayers[opponentIndex].playerGames = (freshOpponentData.playerGames || 0) + 1;
+                    localStorage.setItem(ACTIVE_PLAYERS_CACHE_KEY, JSON.stringify([
+                        ...allPlayers,
+                        currentPlayer && currentPlayer.data ? {
+                            id: currentPlayer.id,
+                            playerName: currentPlayer.data().playerName,
+                            playerPoints: currentPlayer.data().playerPoints || 0,
+                            playerGames: currentPlayer.data().playerGames || 0
+                        } : null
+                    ].filter(Boolean)));
                 }
                 
                 // Update current player reference with fresh data
@@ -1305,21 +1244,13 @@
             currentPlayer = null;
             allPlayers = [];
             selectedOpponent = null;
-            
-            document.getElementById('gameSection').classList.remove('active');
-            document.getElementById('loginSection').style.display = 'block';
-            
-            // Clear login form
-            document.getElementById('playerEmail').value = '';
-            document.getElementById('playerPassword').value = '';
-            
-            // Clear saved credentials
+
+            sessionStorage.removeItem('playerEmail');
+            sessionStorage.removeItem('playerPassword');
+            sessionStorage.removeItem('playerSession');
             localStorage.removeItem('playerEmail');
             localStorage.removeItem('playerPassword');
-            
-            // Reset game form
-            resetGameForm();
-            clearErrors();
+            window.location.replace('index.html');
         }
 
         function showError(elementId, message) {
@@ -1347,36 +1278,54 @@
             inputs.forEach(input => input.classList.remove('error'));
         }
 
-        // Enter key support
-        document.getElementById('playerPassword').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                loginPlayer();
-            }
-        });
+        async function restorePlayerSession() {
+            const email = sessionStorage.getItem('playerEmail');
+            const password = sessionStorage.getItem('playerPassword');
 
-        // Load saved login credentials on page load
-        function loadSavedCredentials() {
-            const savedEmail = localStorage.getItem('playerEmail');
-            const savedPassword = localStorage.getItem('playerPassword');
-            
-            if (savedEmail) {
-                document.getElementById('playerEmail').value = savedEmail;
+            if (!email || !password) {
+                window.location.replace('index.html');
+                return;
             }
-            if (savedPassword) {
-                document.getElementById('playerPassword').value = savedPassword;
+
+            const savedPlayerSession = sessionStorage.getItem('playerSession');
+            if (savedPlayerSession) {
+                const playerSession = JSON.parse(savedPlayerSession);
+                currentPlayer = {
+                    id: playerSession.id,
+                    data: () => playerSession.data
+                };
+                showGameSection(playerSession.data);
+                await loadAllPlayers();
+                return;
             }
+
+            const playersSnapshot = await db.collection('Players2')
+                .where('playerEmail', '==', email)
+                .where('playerPassword', '==', password)
+                .get();
+            logFirestoreRead('restore player session', playersSnapshot);
+
+            if (playersSnapshot.empty) {
+                sessionStorage.removeItem('playerEmail');
+                sessionStorage.removeItem('playerPassword');
+                sessionStorage.removeItem('playerSession');
+                window.location.replace('index.html');
+                return;
+            }
+
+            currentPlayer = playersSnapshot.docs[0];
+            sessionStorage.setItem('playerSession', JSON.stringify({
+                id: currentPlayer.id,
+                data: currentPlayer.data()
+            }));
+            showGameSection(currentPlayer.data());
+            await loadAllPlayers();
         }
 
         // Test Firebase connection
         window.addEventListener('load', async () => {
             try {
-                console.log('Testing Firebase connection...');
-                const testSnapshot = await db.collection('Players2').limit(1).get();
-                logFirestoreRead('Players2 connection test', testSnapshot);
-                console.log('Firebase connection successful');
-                
-                // Load saved credentials
-                loadSavedCredentials();
+                await restorePlayerSession();
                 
             } catch (error) {
                 console.error('Firebase connection error:', error);

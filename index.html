@@ -178,6 +178,34 @@
             margin-bottom: 15px;
         }
 
+        .games-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .games-status {
+            color: #687386;
+            font-size: 0.85rem;
+        }
+
+        .games-refresh-button {
+            border: 0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            background: #2878c8;
+            color: white;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .games-refresh-button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
         .games-list {
             display: flex;
             flex-direction: column;
@@ -723,6 +751,70 @@
             }
         }
     </style>
+    <style>
+        .sign-in-gate {
+            max-width: 500px;
+            margin: 0 auto 25px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .sign-in-gate h2 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .sign-in-gate label {
+            display: block;
+            color: #34495e;
+            font-weight: 600;
+            margin: 12px 0 6px;
+        }
+
+        .sign-in-gate input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d5dbe3;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .sign-in-gate button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 12px;
+            border: 0;
+            border-radius: 8px;
+            background: #2878c8;
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .remember-login {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            color: #34495e;
+            font-size: 0.95rem;
+        }
+
+        .remember-login input {
+            width: auto;
+        }
+
+        .sign-in-error {
+            color: #c0392b;
+            margin-top: 12px;
+            text-align: center;
+        }
+    </style>
+    <script src="auth-guard.js"></script>
 </head>
 <body>
     <!-- COPY THIS ENTIRE SECTION TO YOUR HTML PAGES -->
@@ -954,10 +1046,33 @@
     <!-- END: Navigation Menu -->
 
 
-    <div class="container">
+    <div class="sign-in-gate" id="signInGate" style="display: none;">
+        <h2>🔐 כניסת שחקן</h2>
+        <form id="signInForm">
+            <label for="signInEmail">כתובת אימייל</label>
+            <input type="email" id="signInEmail" required autocomplete="email">
+
+            <label for="signInPassword">סיסמה</label>
+            <input type="password" id="signInPassword" required autocomplete="current-password">
+
+            <label class="remember-login">
+                <input type="checkbox" id="rememberLogin">
+                זכור את פרטי הכניסה שלי
+            </label>
+
+            <button type="submit" id="signInButton">כניסה</button>
+            <div class="sign-in-error" id="signInError" role="alert"></div>
+        </form>
+    </div>
+
+    <div class="container" id="mainContent">
         <!-- Games Container -->
         <div class="games-container">
             <h2 class="games-title">📋 משחקים אחרונים</h2>
+            <div class="games-toolbar">
+                <span class="games-status" id="gamesStatus">📦 נתונים מהמטמון</span>
+                <button class="games-refresh-button" id="refreshGamesButton" type="button" title="בדוק משחקים חדשים">🔄 רענן</button>
+            </div>
             <div id="gamesContainer">
                 <div class="loading">טוען משחקים...</div>
             </div>
@@ -968,12 +1083,16 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { 
-            getFirestore, 
             collection, 
             getDocs,
+            getDocsFromCache,
+            getDocsFromServer,
+            initializeFirestore,
+            persistentLocalCache,
             query,
             orderBy,
-            limit
+            limit,
+            where
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase configuration
@@ -996,6 +1115,95 @@
 
         // DOM elements
         const gamesContainer = document.getElementById('gamesContainer');
+        const gamesStatus = document.getElementById('gamesStatus');
+        const refreshGamesButton = document.getElementById('refreshGamesButton');
+        const signInGate = document.getElementById('signInGate');
+        const mainContent = document.getElementById('mainContent');
+        const signInForm = document.getElementById('signInForm');
+        let gamesQuery = null;
+
+        function hasPlayerSession() {
+            return Boolean(sessionStorage.getItem('playerEmail') && sessionStorage.getItem('playerPassword'));
+        }
+
+        function showSignIn() {
+            signInGate.style.display = 'block';
+            mainContent.style.display = 'none';
+        }
+
+        function showMainContent() {
+            signInGate.style.display = 'none';
+            mainContent.style.display = 'block';
+        }
+
+        signInForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const email = document.getElementById('signInEmail').value.trim().toLowerCase();
+            const password = document.getElementById('signInPassword').value.trim();
+            const rememberLogin = document.getElementById('rememberLogin').checked;
+            const signInButton = document.getElementById('signInButton');
+            const signInError = document.getElementById('signInError');
+
+            signInError.textContent = '';
+            signInButton.disabled = true;
+            signInButton.textContent = 'מתחבר...';
+
+            try {
+                if (!db) {
+                    const firebaseReady = await initializeFirebase();
+                    if (!firebaseReady) return;
+                }
+
+                const playersSnapshot = await getDocs(query(
+                    collection(db, 'Players2'),
+                    where('playerEmail', '==', email),
+                    where('playerPassword', '==', password)
+                ));
+                logFirestoreRead('player login', playersSnapshot);
+
+                if (playersSnapshot.empty) {
+                    signInError.textContent = 'אימייל או סיסמה שגויים';
+                    return;
+                }
+
+                const playerDocument = playersSnapshot.docs[0];
+                sessionStorage.setItem('playerEmail', email);
+                sessionStorage.setItem('playerPassword', password);
+                sessionStorage.setItem('playerSession', JSON.stringify({
+                    id: playerDocument.id,
+                    data: playerDocument.data()
+                }));
+
+                if (rememberLogin) {
+                    localStorage.setItem('playerEmail', email);
+                    localStorage.setItem('playerPassword', password);
+                } else {
+                    localStorage.removeItem('playerEmail');
+                    localStorage.removeItem('playerPassword');
+                }
+
+                const returnTo = localStorage.getItem('authReturnTo');
+                if (returnTo) {
+                    localStorage.removeItem('authReturnTo');
+                    window.location.replace(returnTo);
+                } else {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                signInError.textContent = 'שגיאה בכניסה למערכת';
+            } finally {
+                signInButton.disabled = false;
+                signInButton.textContent = 'כניסה';
+            }
+        });
+
+        const rememberedEmail = localStorage.getItem('playerEmail');
+        const rememberedPassword = localStorage.getItem('playerPassword');
+        if (rememberedEmail) document.getElementById('signInEmail').value = rememberedEmail;
+        if (rememberedPassword) document.getElementById('signInPassword').value = rememberedPassword;
+        document.getElementById('rememberLogin').checked = Boolean(rememberedEmail && rememberedPassword);
 
         // Initialize Firebase
         async function initializeFirebase() {
@@ -1003,11 +1211,9 @@
                 console.log('🔥 Initializing Firebase...');
                 
                 app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-
-                // Test connection by trying to access the games collection
-                const testSnapshot = await getDocs(query(collection(db, 'games'), limit(1)));
-                logFirestoreRead('games connection test', testSnapshot);
+                db = initializeFirestore(app, {
+                    localCache: persistentLocalCache()
+                });
                 
                 console.log('✅ Firebase connected successfully');
                 return true;
@@ -1020,18 +1226,54 @@
         }
 
         // Load last 10 games
-        async function loadLastGames() {
+        async function loadLastGames(forceRefresh = false) {
             try {
                 console.log('📊 Loading last 10 games...');
-                
-                // Show loading state
-                gamesContainer.innerHTML = '<div class="loading">טוען משחקים...</div>';
-                
-                // Query last 10 games ordered by date (descending)
-                const gamesRef = collection(db, 'games');
-                const q = query(gamesRef, orderBy('date', 'desc'), limit(10));
-                const snapshot = await getDocs(q);
-                logFirestoreRead('last games', snapshot);
+
+                gamesQuery = gamesQuery || query(collection(db, 'games'), orderBy('date', 'desc'), limit(10));
+                let snapshot;
+                let dataSource;
+
+                if (forceRefresh) {
+                    refreshGamesButton.disabled = true;
+                    gamesStatus.textContent = '🔎 בודק משחקים חדשים...';
+                    let cachedGameIds = new Set();
+                    try {
+                        const cachedSnapshot = await getDocsFromCache(gamesQuery);
+                        cachedGameIds = new Set(cachedSnapshot.docs.map((gameDoc) => gameDoc.id));
+                    } catch (cacheError) {
+                        console.log('No cached games available for comparison');
+                    }
+
+                    snapshot = await getDocsFromServer(gamesQuery);
+                    logFirestoreRead('last games from server', snapshot);
+                    const hasNewGames = snapshot.docs.some((gameDoc) => !cachedGameIds.has(gameDoc.id));
+                    dataSource = 'server';
+                    gamesStatus.textContent = hasNewGames
+                        ? '🆕 משחקים חדשים נטענו'
+                        : '✅ לא נמצאו משחקים חדשים';
+                } else {
+                    try {
+                        snapshot = await getDocsFromCache(gamesQuery);
+                        logFirestoreRead('last games from cache', snapshot);
+                        if (snapshot.empty) {
+                            gamesStatus.textContent = '🔎 טוען נתונים חדשים...';
+                            snapshot = await getDocsFromServer(gamesQuery);
+                            logFirestoreRead('last games from server', snapshot);
+                            dataSource = 'server';
+                            gamesStatus.textContent = '🆕 נתונים חדשים נטענו';
+                        } else {
+                            dataSource = 'cache';
+                            gamesStatus.textContent = '📦 נתונים מהמטמון';
+                        }
+                    } catch (cacheError) {
+                        gamesStatus.textContent = '🔎 טוען נתונים חדשים...';
+                        snapshot = await getDocsFromServer(gamesQuery);
+                        logFirestoreRead('last games from server', snapshot);
+                        dataSource = 'server';
+                        gamesStatus.textContent = '🆕 נתונים חדשים נטענו';
+                    }
+                }
                 
                 const games = [];
                 snapshot.forEach((doc) => {
@@ -1042,7 +1284,7 @@
                     });
                 });
 
-                console.log(`✅ Loaded ${games.length} games`);
+                console.log(`✅ Loaded ${games.length} games from ${dataSource}`);
                 
                 // Display games
                 displayGames(games);
@@ -1051,9 +1293,11 @@
                 console.error('❌ Error loading games:', error);
                 showError(`שגיאה בטעינת המשחקים: ${error.message}`);
             } finally {
-                // Loading complete
+                refreshGamesButton.disabled = false;
             }
         }
+
+        refreshGamesButton.addEventListener('click', () => loadLastGames(true));
 
         // Display games
         function displayGames(games) {
@@ -1240,6 +1484,13 @@
         // Initialize the application
         async function initApp() {
             console.log('🚀 Starting Last 10 Games Application...');
+
+            if (!hasPlayerSession()) {
+                showSignIn();
+                return;
+            }
+
+            showMainContent();
             
             const firebaseReady = await initializeFirebase();
             
