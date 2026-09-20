@@ -150,10 +150,6 @@
             padding: 30px;
         }
         
-        .auth-section {
-            margin-bottom: 30px;
-        }
-        
         .form-section {
             display: none;
         }
@@ -770,29 +766,6 @@
                 </div>
             </div>
             
-            <!-- Authentication Section -->
-            <div class="auth-section" id="authSection" style="display: none;">
-                <div class="form-title">
-                    🔐 הזנת סיסמה
-                </div>
-                
-                <div class="info-box">
-                    <span class="info-icon">ℹ️</span>
-                    יש להזין את סיסמת המנהל כדי להוסיף שחקן חדש למערכת
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="adminPassword">סיסמת מנהל</label>
-                    <input type="password" id="adminPassword" class="form-input" placeholder="הזן סיסמת מנהל">
-                    <div class="error-message" id="passwordError">סיסמה שגויה</div>
-                </div>
-                
-                <button class="btn btn-primary" onclick="checkPassword()">
-                    <span id="authBtnText">כניסה</span>
-                    <div class="loading-spinner" id="authSpinner" style="display: none;"></div>
-                </button>
-            </div>
-            
             <!-- Add Player Form Section -->
             <div class="form-section" id="formSection">
                 <button class="btn back-btn" onclick="showNavSection()">
@@ -920,95 +893,20 @@
             console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
         }
         
-        const ADMIN_PASSWORD = "1416";
-        let isAuthenticated = false;
-
-        function checkPassword() {
-            const passwordInput = document.getElementById('adminPassword');
-            const password = passwordInput.value.trim();
-            const errorDiv = document.getElementById('passwordError');
-            const authBtn = document.getElementById('authBtnText');
-            const authSpinner = document.getElementById('authSpinner');
-            
-            // Clear previous errors
-            passwordInput.classList.remove('error');
-            errorDiv.classList.remove('show');
-            
-            if (!password) {
-                showError('passwordError', 'יש להזין סיסמה');
-                passwordInput.classList.add('error');
-                return;
-            }
-            
-            // Show loading
-            authBtn.style.display = 'none';
-            authSpinner.style.display = 'block';
-            
-            // Simulate checking (add small delay for UX)
-            setTimeout(() => {
-                if (password === ADMIN_PASSWORD) {
-                    isAuthenticated = true;
-                    
-                    // Check if we should show games or add player form
-                    if (window.showGamesAfterAuth) {
-                        showGamesManagement();
-                        window.showGamesAfterAuth = false;
-                    } else {
-                        showFormSection();
-                    }
-                } else {
-                    showError('passwordError', 'סיסמה שגויה');
-                    passwordInput.classList.add('error');
-                    passwordInput.value = '';
-                }
-                
-                // Hide loading
-                authBtn.style.display = 'block';
-                authSpinner.style.display = 'none';
-            }, 500);
-        }
-
-        function showFormSection() {
-            document.getElementById('authSection').style.display = 'none';
-            document.getElementById('formSection').classList.add('active');
-        }
-
         function showNavSection() {
             document.getElementById('navSection').style.display = 'block';
-            document.getElementById('authSection').style.display = 'none';
             document.getElementById('formSection').classList.remove('active');
             document.getElementById('gamesSection').classList.remove('active');
-            document.getElementById('headerSubtitle').textContent = 'מערכת ניהול מועדון';
-            isAuthenticated = false;
         }
 
         function showAddPlayerSection() {
             document.getElementById('navSection').style.display = 'none';
-            document.getElementById('authSection').style.display = 'block';
-            document.getElementById('headerSubtitle').textContent = 'הוספת שחקן חדש';
+            document.getElementById('formSection').classList.add('active');
         }
 
         function showGamesSection() {
-            // Set flag to show games after authentication
-            window.showGamesAfterAuth = true;
-
             document.getElementById('navSection').style.display = 'none';
-            document.getElementById('authSection').style.display = 'block';
-            document.getElementById('headerSubtitle').textContent = 'ניהול משחקים';
-            
-            
-        }
-
-        function showAuthSection() {
-            document.getElementById('authSection').style.display = 'block';
-            document.getElementById('formSection').classList.remove('active');
-            document.getElementById('gamesSection').classList.remove('active');
-            
-            // Clear form
-            document.getElementById('playerForm').reset();
-            document.getElementById('playerPassword').value = '1234';
-            clearErrors();
-            hideSuccess();
+            document.getElementById('gamesSection').classList.add('active');
         }
 
         function showError(elementId, message) {
@@ -1062,11 +960,6 @@
         // Form submission
         document.getElementById('playerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            if (!isAuthenticated) {
-                alert('אין הרשאה');
-                return;
-            }
             
             const submitBtn = document.getElementById('submitBtn');
             const submitBtnText = document.getElementById('submitBtnText');
@@ -1173,19 +1066,6 @@
                 submitSpinner.style.display = 'none';
             }
         });
-
-        // Enter key support for password
-        document.getElementById('adminPassword').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                checkPassword();
-            }
-        });
-
-        function showGamesManagement() {
-            document.getElementById('authSection').style.display = 'none';
-            document.getElementById('gamesSection').classList.add('active');
-            // Don't auto-load games anymore
-        }
 
         async function loadGames() {
             const gamesLoading = document.getElementById('gamesLoading');

@@ -6,6 +6,15 @@
     const email = sessionStorage.getItem('playerEmail');
     const password = sessionStorage.getItem('playerPassword');
 
+    function isAdminSession() {
+        try {
+            const playerSession = JSON.parse(sessionStorage.getItem('playerSession') || 'null');
+            return playerSession?.data?.admin === true;
+        } catch (error) {
+            return false;
+        }
+    }
+
     function hideNavigation() {
         document.addEventListener('DOMContentLoaded', () => {
             const navigation = document.querySelector('.standalone-nav');
@@ -85,6 +94,11 @@
                 document.documentElement.style.visibility = 'visible';
             }, { once: true });
         }
+        return;
+    }
+
+    if (pageName === 'admin.html' && !isAdminSession()) {
+        window.location.replace('index.html');
         return;
     }
 

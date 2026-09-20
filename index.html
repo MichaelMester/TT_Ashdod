@@ -85,21 +85,26 @@
 
         * {
             margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            direction: rtl;
+        .last-games-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
             padding: 20px;
+            text-align: center;
+            position: relative;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .last-games-header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .last-games-header p {
+            font-size: 1rem;
+            opacity: 0.9;
         }
 
         .header {
@@ -164,10 +169,7 @@
         }
 
         .games-container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 20px;
         }
 
         .games-title {
@@ -191,19 +193,17 @@
             font-size: 0.85rem;
         }
 
-        .games-refresh-button {
-            border: 0;
-            border-radius: 8px;
-            padding: 8px 12px;
-            background: #2878c8;
-            color: white;
-            cursor: pointer;
-            font: inherit;
+        .player-name-with-record {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
         }
 
-        .games-refresh-button:disabled {
-            opacity: 0.6;
-            cursor: wait;
+        .head-to-head-record {
+            color: #2878c8;
+            font-size: 0.85rem;
+            font-weight: 700;
         }
 
         .games-list {
@@ -213,12 +213,20 @@
         }
 
         .game-card {
-            background: white;
+            position: relative;
+            background: linear-gradient(135deg, #ffffff 0%, #f3f8ff 100%);
             border-radius: 10px;
             padding: 15px;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e0e0e0;
+            border: 1px solid #cfe0f2;
+            border-inline-start: 4px solid #3498db;
             transition: all 0.3s ease;
+        }
+
+        .game-card:nth-child(even) {
+            background: linear-gradient(135deg, #ffffff 0%, #f1fbfa 100%);
+            border-color: #c9e8e3;
+            border-inline-start-color: #2a9d8f;
         }
 
         .game-card:hover {
@@ -233,7 +241,7 @@
             align-items: center;
             margin-bottom: 10px;
             padding-bottom: 8px;
-            border-bottom: 1px solid #ecf0f1;
+            border-bottom: 1px solid #d8e8f5;
         }
 
         .game-date {
@@ -383,11 +391,11 @@
         }
 
         .sets-display {
-            background: #f8f9fa;
+            background: #e8f3ff;
             padding: 4px 8px;
             border-radius: 6px;
             font-weight: 700;
-            color: #2c3e50;
+            color: #23649a;
             font-size: 0.85rem;
         }
 
@@ -605,6 +613,10 @@
                 margin-bottom: 3px;
             }
 
+            .head-to-head-record {
+                font-size: 0.75rem;
+            }
+
             .labels-section {
                 font-size: 0.7rem;
             }
@@ -696,6 +708,10 @@
                 font-size: 0.9rem;
             }
 
+            .head-to-head-record {
+                font-size: 0.7rem;
+            }
+
             .vs-separator {
                 font-size: 0.8rem;
                 padding: 2px 0;
@@ -774,12 +790,19 @@
             margin: 12px 0 6px;
         }
 
-        .sign-in-gate input {
+        .sign-in-gate input[type="email"],
+        .sign-in-gate input[type="password"] {
             width: 100%;
+            height: 44px;
+            min-height: 0;
+            max-height: 44px;
             padding: 12px;
             border: 1px solid #d5dbe3;
             border-radius: 8px;
             font-size: 1rem;
+            box-sizing: border-box;
+            display: block;
+            background: #fff;
         }
 
         .sign-in-gate button {
@@ -806,6 +829,8 @@
 
         .remember-login input {
             width: auto;
+            height: auto;
+            min-height: 0;
         }
 
         .sign-in-error {
@@ -1066,12 +1091,20 @@
     </div>
 
     <div class="container" id="mainContent">
+        <div class="last-games-header">
+            <div class="floating-elements">
+                <div class="floating-paddle" style="left: 20%; animation-delay: 0s;">🏓</div>
+                <div class="floating-paddle" style="left: 50%; animation-delay: 5s;">🏓</div>
+                <div class="floating-paddle" style="left: 80%; animation-delay: 10s;">🏓</div>
+            </div>
+            <h1>מועדון טנ"ש אשדוד</h1>
+            <p>משחקים אחרונים</p>
+        </div>
         <!-- Games Container -->
         <div class="games-container">
             <h2 class="games-title">📋 משחקים אחרונים</h2>
             <div class="games-toolbar">
                 <span class="games-status" id="gamesStatus">📦 נתונים מהמטמון</span>
-                <button class="games-refresh-button" id="refreshGamesButton" type="button" title="בדוק משחקים חדשים">🔄 רענן</button>
             </div>
             <div id="gamesContainer">
                 <div class="loading">טוען משחקים...</div>
@@ -1116,7 +1149,6 @@
         // DOM elements
         const gamesContainer = document.getElementById('gamesContainer');
         const gamesStatus = document.getElementById('gamesStatus');
-        const refreshGamesButton = document.getElementById('refreshGamesButton');
         const signInGate = document.getElementById('signInGate');
         const mainContent = document.getElementById('mainContent');
         const signInForm = document.getElementById('signInForm');
@@ -1235,7 +1267,6 @@
                 let dataSource;
 
                 if (forceRefresh) {
-                    refreshGamesButton.disabled = true;
                     gamesStatus.textContent = '🔎 בודק משחקים חדשים...';
                     let cachedGameIds = new Set();
                     try {
@@ -1253,25 +1284,41 @@
                         ? '🆕 משחקים חדשים נטענו'
                         : '✅ לא נמצאו משחקים חדשים';
                 } else {
+                    let cachedGameIds = new Set();
                     try {
                         snapshot = await getDocsFromCache(gamesQuery);
                         logFirestoreRead('last games from cache', snapshot);
-                        if (snapshot.empty) {
-                            gamesStatus.textContent = '🔎 טוען נתונים חדשים...';
-                            snapshot = await getDocsFromServer(gamesQuery);
-                            logFirestoreRead('last games from server', snapshot);
+                        cachedGameIds = new Set(snapshot.docs.map((gameDoc) => gameDoc.id));
+                    } catch (cacheError) {
+                        console.log('No cached games available');
+                    }
+
+                    if (!snapshot || snapshot.empty) {
+                        gamesStatus.textContent = '🔎 טוען נתונים חדשים...';
+                    } else {
+                        dataSource = 'cache';
+                        gamesStatus.textContent = '📦 נתונים מהמטמון';
+                    }
+
+                    try {
+                        const serverSnapshot = await getDocsFromServer(gamesQuery);
+                        logFirestoreRead('last games from server', serverSnapshot);
+                        const hasNewGames = serverSnapshot.docs.some((gameDoc) => !cachedGameIds.has(gameDoc.id));
+                        if (hasNewGames || !snapshot || snapshot.empty) {
+                            snapshot = serverSnapshot;
                             dataSource = 'server';
-                            gamesStatus.textContent = '🆕 נתונים חדשים נטענו';
+                            gamesStatus.textContent = hasNewGames
+                                ? '🆕 משחקים חדשים נטענו'
+                                : '✅ המשחקים המעודכנים נטענו';
                         } else {
                             dataSource = 'cache';
-                            gamesStatus.textContent = '📦 נתונים מהמטמון';
+                            gamesStatus.textContent = '✅ המטמון מעודכן';
                         }
-                    } catch (cacheError) {
-                        gamesStatus.textContent = '🔎 טוען נתונים חדשים...';
-                        snapshot = await getDocsFromServer(gamesQuery);
-                        logFirestoreRead('last games from server', snapshot);
-                        dataSource = 'server';
-                        gamesStatus.textContent = '🆕 נתונים חדשים נטענו';
+                    } catch (serverError) {
+                        if (!snapshot || snapshot.empty) {
+                            throw serverError;
+                        }
+                        console.log('Server refresh failed; keeping cached games');
                     }
                 }
                 
@@ -1292,12 +1339,8 @@
             } catch (error) {
                 console.error('❌ Error loading games:', error);
                 showError(`שגיאה בטעינת המשחקים: ${error.message}`);
-            } finally {
-                refreshGamesButton.disabled = false;
             }
         }
-
-        refreshGamesButton.addEventListener('click', () => loadLastGames(true));
 
         // Display games
         function displayGames(games) {
@@ -1314,9 +1357,10 @@
         }
 
         // Generate game card HTML
-        function generateGameCard(game, gameNumber) {
+        function generateGameCard(game, fallbackGameNumber) {
             // Extract game data with fallbacks
             const date = formatDate(game.date);
+            const gameNumber = game.gameNumber ?? fallbackGameNumber;
             const player1Name = game.player1Name || 'שחקן 1';
             const player2Name = game.player2Name || 'שחקן 2';
             const player1Points = game.player1Points || 0;
@@ -1325,6 +1369,16 @@
             const player2Amount = game.player2Amount || 0;
             const player1Sets = game.player1Sets || 0;
             const player2Sets = game.player2Sets || 0;
+            const player1HeadToHead = game.player1HeadToHead || {};
+            const player2HeadToHead = game.player2HeadToHead || {};
+            const player1HeadToHeadPercentage = player1HeadToHead.games
+                ? Math.round((player1HeadToHead.wins / player1HeadToHead.games) * 100)
+                : 0;
+            const player2HeadToHeadPercentage = player2HeadToHead.games
+                ? Math.round((player2HeadToHead.wins / player2HeadToHead.games) * 100)
+                : 0;
+            const player1HeadToHeadRecord = `${player1HeadToHeadPercentage}% (${player1HeadToHead.wins ?? 0})`;
+            const player2HeadToHeadRecord = `${player2HeadToHeadPercentage}% (${player2HeadToHead.wins ?? 0})`;
 
             // Determine winner (player with positive amount or higher sets)
             const player1IsWinner = player1Amount > 0 || (player1Amount === player2Amount && player1Sets > player2Sets);
@@ -1334,7 +1388,7 @@
                 <div class="game-card">
                     <div class="game-header">
                         <div class="game-date">${date}</div>
-                        <div class="game-number">משחק #${gameNumber}</div>
+                        <div class="game-number">משחק ${gameNumber}</div>
                     </div>
                     
                     <div class="game-content">
@@ -1343,9 +1397,15 @@
                             <div class="desktop-stat-row">
                                 <div class="desktop-stat-label">שם</div>
                                 <div class="desktop-stat-values">
-                                    <span class="player-name ${player1IsWinner ? 'winner' : ''}">${player1Name}</span>
+                                    <span class="player-name-with-record">
+                                        <span class="player-name ${player1IsWinner ? 'winner' : ''}">${player1Name}</span>
+                                        <span class="head-to-head-record">${player1HeadToHeadRecord}</span>
+                                    </span>
                                     <div class="desktop-vs-spacer"></div>
-                                    <span class="player-name ${player2IsWinner ? 'winner' : ''}">${player2Name}</span>
+                                    <span class="player-name-with-record">
+                                        <span class="player-name ${player2IsWinner ? 'winner' : ''}">${player2Name}</span>
+                                        <span class="head-to-head-record">${player2HeadToHeadRecord}</span>
+                                    </span>
                                 </div>
                             </div>
                             <div class="desktop-stat-row">
@@ -1370,9 +1430,15 @@
                         <div class="mobile-stat-row mobile-only">
                             <div class="mobile-stat-label">שם</div>
                             <div class="mobile-stat-values">
-                                <span class="player-name ${player1IsWinner ? 'winner' : ''}">${player1Name}</span>
+                                <span class="player-name-with-record">
+                                    <span class="player-name ${player1IsWinner ? 'winner' : ''}">${player1Name}</span>
+                                    <span class="head-to-head-record">${player1HeadToHeadRecord}</span>
+                                </span>
                                 <div class="mobile-vs-spacer"></div>
-                                <span class="player-name ${player2IsWinner ? 'winner' : ''}">${player2Name}</span>
+                                <span class="player-name-with-record">
+                                    <span class="player-name ${player2IsWinner ? 'winner' : ''}">${player2Name}</span>
+                                    <span class="head-to-head-record">${player2HeadToHeadRecord}</span>
+                                </span>
                             </div>
                         </div>
                         <div class="mobile-stat-row mobile-only">

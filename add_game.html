@@ -1092,6 +1092,18 @@
             }
         }
 
+        function getHeadToHeadStats(playerData, opponentName) {
+            for (let index = 1; index <= 500; index++) {
+                if (playerData[`playerOpponent${index}Name`] === opponentName) {
+                    const games = Number(playerData[`playerOpponent${index}Games`]) || 0;
+                    const wins = Number(playerData[`playerOpponent${index}Wins`]) || 0;
+                    return { games, wins };
+                }
+            }
+
+            return { games: 0, wins: 0 };
+        }
+
         // Game form submission
         document.getElementById('gameForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1125,6 +1137,8 @@
                 logFirestoreRead('opponent before game', opponentDoc);
                 const freshOpponentData = opponentDoc.data();
                 const opponentPoints = freshOpponentData.playerPoints || 0;
+                const currentPlayerHeadToHead = getHeadToHeadStats(currentPlayerData, selectedOpponent.playerName);
+                const opponentHeadToHead = getHeadToHeadStats(freshOpponentData, currentPlayerData.playerName);
                 
                 // Calculate points
                 const pointsCalc = calculatePoints(playerPoints, opponentPoints);
@@ -1166,9 +1180,39 @@
                 
                 // Update current player in opponent's opponent list
                 await updateOpponentOpponentStats(selectedOpponent.id, currentPlayerData.playerName);
+
+                // Assign the next permanent game number before creating the game record.
+                const totalGamesRef = db.collection('Statistics').doc('Total_Games');
+                let gameNumber = 1;
+                try {
+                    const latestGameSnapshot = await db.collection('games')
+                        .orderBy('gameNumber', 'desc')
+                        .limit(1)
+                        .get();
+                    logFirestoreRead('latest game number', latestGameSnapshot);
+                    if (!latestGameSnapshot.empty) {
+                        gameNumber = (Number(latestGameSnapshot.docs[0].data().gameNumber) || 0) + 1;
+                    } else {
+                        const totalGamesDoc = await totalGamesRef.get();
+                        logFirestoreRead('total games before new game', totalGamesDoc);
+                        const currentTotalGames = totalGamesDoc.exists
+                            ? Number(totalGamesDoc.data().total_games) || 0
+                            : 0;
+                        gameNumber = currentTotalGames + 1;
+                    }
+                } catch (gameNumberError) {
+                    // Existing games may not have gameNumber yet, so use the legacy counter during migration.
+                    const totalGamesDoc = await totalGamesRef.get();
+                    logFirestoreRead('total games before new game', totalGamesDoc);
+                    const currentTotalGames = totalGamesDoc.exists
+                        ? Number(totalGamesDoc.data().total_games) || 0
+                        : 0;
+                    gameNumber = currentTotalGames + 1;
+                }
                 
                 // Create game record in games collection
                 await db.collection('games').add({
+                    gameNumber: gameNumber,
                     date: Date.now(),
                     player1Amount: pointsCalc.playerGain,
                     player1Name: currentPlayerData.playerName,
@@ -1177,11 +1221,20 @@
                     player2Amount: pointsCalc.opponentLoss,
                     player2Name: selectedOpponent.playerName,
                     player2Points: opponentPoints,
-                    player2Sets: opponentSetsValue.toString()
+                    player2Sets: opponentSetsValue.toString(),
+                    player1HeadToHead: {
+                        games: currentPlayerHeadToHead.games + 1,
+                        wins: currentPlayerHeadToHead.wins + 1,
+                        losses: currentPlayerHeadToHead.games - currentPlayerHeadToHead.wins
+                    },
+                    player2HeadToHead: {
+                        games: opponentHeadToHead.games + 1,
+                        wins: opponentHeadToHead.wins,
+                        losses: opponentHeadToHead.games - opponentHeadToHead.wins + 1
+                    }
                 });
                 
                 // Increment total games counter in Statistics collection
-                const totalGamesRef = db.collection('Statistics').doc('Total_Games');
                 await totalGamesRef.set({
                     total_games: firebase.firestore.FieldValue.increment(1)
                 }, { merge: true });
