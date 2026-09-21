@@ -763,6 +763,9 @@
                     <button class="btn btn-primary nav-btn" onclick="showPlayersSection()">
                         ⚙️ ניהול שחקנים
                     </button>
+                    <button class="btn btn-primary nav-btn" onclick="showReadsSection()">
+                        📖 ספירת קריאות
+                    </button>
                     <button class="btn btn-success nav-btn" onclick="showGamesSection()">
                         🎮 ניהול משחקים
                     </button>
@@ -898,6 +901,23 @@
                     🗑️ מחק שחקן
                 </button>
             </div>
+
+            <!-- Reads Count Section -->
+            <div class="form-section" id="readsSection">
+                <button class="btn back-btn" onclick="showNavSection()">
+                    ← חזרה לתפריט הראשי
+                </button>
+
+                <div class="form-title">
+                    📖 ספירת קריאות לפי שחקן
+                </div>
+
+                <div id="readsCountLoading" style="text-align: center; padding: 20px;">טוען נתונים...</div>
+                <div id="readsCountList" style="display: none;"></div>
+                <div id="readsCountEmpty" style="display: none; text-align: center; padding: 20px; color: #666;">
+                    אין נתוני קריאות להצגה
+                </div>
+            </div>
             
             <!-- Games Management Section -->
             <div class="form-section" id="gamesSection">
@@ -962,12 +982,49 @@
         function logFirestoreRead(label, snapshot) {
             const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
             console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
+            window.recordFirestoreRead?.(snapshot);
+        }
+
+        async function loadReadsCount() {
+            const loading = document.getElementById('readsCountLoading');
+            const list = document.getElementById('readsCountList');
+            const empty = document.getElementById('readsCountEmpty');
+            loading.style.display = 'block';
+            list.style.display = 'none';
+            empty.style.display = 'none';
+
+            try {
+                const readsSnapshot = await db.collection('Statistics').doc('Reads_Count').get();
+                logFirestoreRead('Reads_Count', readsSnapshot);
+                const players = readsSnapshot.exists ? (readsSnapshot.data().players || {}) : {};
+                const entries = Object.values(players).sort((a, b) => (Number(b.reads) || 0) - (Number(a.reads) || 0));
+
+                if (!entries.length) {
+                    empty.style.display = 'block';
+                    return;
+                }
+
+                list.innerHTML = entries.map(player => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+                        <strong>${player.name || 'ללא שם'}</strong>
+                        <span>${Number(player.reads) || 0} מסמכים</span>
+                    </div>
+                `).join('');
+                list.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading Reads_Count:', error);
+                list.innerHTML = `<div style="color: #dc3545; padding: 20px 0;">שגיאה בטעינת נתוני הקריאות: ${error.message}</div>`;
+                list.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
         }
         
         function showNavSection() {
             document.getElementById('navSection').style.display = 'block';
             document.getElementById('formSection').classList.remove('active');
             document.getElementById('playersSection').classList.remove('active');
+            document.getElementById('readsSection').classList.remove('active');
             document.getElementById('gamesSection').classList.remove('active');
         }
 
@@ -980,6 +1037,12 @@
             document.getElementById('navSection').style.display = 'none';
             document.getElementById('playersSection').classList.add('active');
             await loadManagedPlayers();
+        }
+
+        async function showReadsSection() {
+            document.getElementById('navSection').style.display = 'none';
+            document.getElementById('readsSection').classList.add('active');
+            await loadReadsCount();
         }
 
         function showGamesSection() {

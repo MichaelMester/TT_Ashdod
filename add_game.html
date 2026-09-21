@@ -852,6 +852,7 @@
         function logFirestoreRead(label, snapshot) {
             const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
             console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
+            window.recordFirestoreRead?.(snapshot);
         }
 
         // Points calculation table

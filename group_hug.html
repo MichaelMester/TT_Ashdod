@@ -1214,6 +1214,7 @@
             const source = snapshot.metadata?.fromCache ? 'cache' : 'server';
             const readType = source === 'cache' ? 'Cache read' : 'Firestore read';
             console.log(`${readType} - ${label}: ${documentCount} document(s), source: ${source}`);
+            window.recordFirestoreRead?.(snapshot);
         }
 
         let isLoading = false;

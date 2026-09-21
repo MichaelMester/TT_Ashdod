@@ -1123,6 +1123,7 @@
             getDocsFromServer,
             getDocFromCache,
             getDocFromServer,
+            setDoc,
             initializeFirestore,
             persistentLocalCache,
             query,
@@ -1151,6 +1152,23 @@
                 ? snapshot.size
                 : (snapshot.exists() ? 1 : 0);
             console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
+            window.recordFirestoreRead?.(snapshot);
+        }
+
+        async function flushPreviousReadSession() {
+            const session = JSON.parse(localStorage.getItem('firestoreReadSession') || 'null');
+            if (!session?.playerId || !(Number(session.reads) > 0)) return;
+
+            const readsRef = doc(db, 'Statistics', 'Reads_Count');
+            const readsSnapshot = await getDocFromServer(readsRef);
+            const existingPlayers = readsSnapshot.exists() ? (readsSnapshot.data().players || {}) : {};
+            const existingPlayer = existingPlayers[session.playerId] || {};
+            existingPlayers[session.playerId] = {
+                name: session.playerName || existingPlayer.name || '',
+                reads: (Number(existingPlayer.reads) || 0) + Number(session.reads)
+            };
+            await setDoc(readsRef, { players: existingPlayers }, { merge: true });
+            localStorage.removeItem('firestoreReadSession');
         }
 
         function logCacheRead(label, snapshot) {
@@ -1214,12 +1232,17 @@
                 }
 
                 const playerDocument = playersSnapshot.docs[0];
+                await flushPreviousReadSession();
                 sessionStorage.setItem('playerEmail', email);
                 sessionStorage.setItem('playerPassword', password);
                 sessionStorage.setItem('playerSession', JSON.stringify({
                     id: playerDocument.id,
                     data: playerDocument.data()
                 }));
+                window.startFirestoreReadSession?.({
+                    id: playerDocument.id,
+                    name: playerDocument.data().playerName
+                });
 
                 if (rememberLogin) {
                     localStorage.setItem('playerEmail', email);

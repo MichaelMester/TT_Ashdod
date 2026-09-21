@@ -1,4 +1,25 @@
 (function () {
+    const READ_SESSION_KEY = 'firestoreReadSession';
+
+    window.recordFirestoreRead = function (snapshot) {
+        const session = JSON.parse(localStorage.getItem(READ_SESSION_KEY) || 'null');
+        if (!session?.playerId) return;
+
+        const documentCount = typeof snapshot?.size === 'number'
+            ? snapshot.size
+            : (snapshot?.exists ? 1 : 0);
+        session.reads = (Number(session.reads) || 0) + documentCount;
+        localStorage.setItem(READ_SESSION_KEY, JSON.stringify(session));
+    };
+
+    window.startFirestoreReadSession = function (player) {
+        localStorage.setItem(READ_SESSION_KEY, JSON.stringify({
+            playerId: player.id,
+            playerName: player.name || '',
+            reads: 0
+        }));
+    };
+
     const pageName = window.location.pathname.split('/').pop() || 'index.html';
 
     document.documentElement.style.visibility = 'hidden';
@@ -100,6 +121,20 @@
     if (pageName === 'admin.html' && !isAdminSession()) {
         window.location.replace('index.html');
         return;
+    }
+
+    if (!localStorage.getItem(READ_SESSION_KEY)) {
+        try {
+            const playerSession = JSON.parse(sessionStorage.getItem('playerSession') || 'null');
+            if (playerSession?.id) {
+                window.startFirestoreReadSession?.({
+                    id: playerSession.id,
+                    name: playerSession.data?.playerName || ''
+                });
+            }
+        } catch (error) {
+            console.warn('Could not initialize Firestore read session:', error);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
