@@ -760,6 +760,9 @@
                     <button class="btn btn-primary nav-btn" onclick="showAddPlayerSection()">
                         👤 הוספת שחקן חדש
                     </button>
+                    <button class="btn btn-primary nav-btn" onclick="showPlayersSection()">
+                        ⚙️ ניהול שחקנים
+                    </button>
                     <button class="btn btn-success nav-btn" onclick="showGamesSection()">
                         🎮 ניהול משחקים
                     </button>
@@ -826,6 +829,74 @@
                         <div class="loading-spinner" id="submitSpinner" style="display: none;"></div>
                     </button>
                 </form>
+            </div>
+
+            <!-- Player Management Section -->
+            <div class="form-section" id="playersSection">
+                <button class="btn back-btn" onclick="showNavSection()">
+                    ← חזרה לתפריט הראשי
+                </button>
+
+                <div class="form-title">
+                    ⚙️ ניהול שחקנים
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="managedPlayerSelect">בחר שחקן</label>
+                    <select id="managedPlayerSelect" class="form-input">
+                        <option value="">טוען שחקנים...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="managedPlayerDetails" style="display: none; padding: 15px; background: #f8f9fa; border-radius: 12px;">
+                    <div><strong>נקודות:</strong> <span id="managedPlayerPoints"></span></div>
+                    <div><strong>סטטוס:</strong> <span id="managedPlayerStatus"></span></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="managedPlayerEmail">אימייל</label>
+                    <input type="email" id="managedPlayerEmail" class="form-input" autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="managedPlayerPassword">סיסמה</label>
+                    <input type="text" id="managedPlayerPassword" class="form-input" autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">קבוצות</label>
+                    <div style="display: flex; gap: 20px;">
+                        <label style="display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="managedGroupHug">
+                            חוג
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="managedGroupAdult">
+                            בוגרים
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn btn-success" id="savePlayerDetailsBtn" onclick="saveManagedPlayerDetails()" disabled>
+                    שמור פרטי שחקן
+                </button>
+
+                <button class="btn btn-primary" id="togglePlayerActiveBtn" onclick="toggleManagedPlayerActive()" disabled style="margin-top: 10px;">
+                    שנה סטטוס שחקן
+                </button>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label" for="pointsAdjustment">שינוי נקודות</label>
+                    <input type="number" id="pointsAdjustment" class="form-input" placeholder="לדוגמה: 10 או -5" step="1">
+                </div>
+
+                <button class="btn btn-success" id="adjustPlayerPointsBtn" onclick="adjustManagedPlayerPoints()" disabled>
+                    הוסף / הורד נקודות
+                </button>
+
+                <button class="btn delete-btn" id="deletePlayerBtn" onclick="deleteManagedPlayer()" disabled style="margin-top: 20px;">
+                    🗑️ מחק שחקן
+                </button>
             </div>
             
             <!-- Games Management Section -->
@@ -896,12 +967,19 @@
         function showNavSection() {
             document.getElementById('navSection').style.display = 'block';
             document.getElementById('formSection').classList.remove('active');
+            document.getElementById('playersSection').classList.remove('active');
             document.getElementById('gamesSection').classList.remove('active');
         }
 
         function showAddPlayerSection() {
             document.getElementById('navSection').style.display = 'none';
             document.getElementById('formSection').classList.add('active');
+        }
+
+        async function showPlayersSection() {
+            document.getElementById('navSection').style.display = 'none';
+            document.getElementById('playersSection').classList.add('active');
+            await loadManagedPlayers();
         }
 
         function showGamesSection() {
@@ -990,6 +1068,179 @@
                 }, { merge: true });
             }
 
+        let managedPlayers = new Map();
+
+        async function loadManagedPlayers() {
+            const select = document.getElementById('managedPlayerSelect');
+            select.innerHTML = '<option value="">טוען שחקנים...</option>';
+            try {
+                const playersSnapshot = await db.collection('Players2').get();
+                logFirestoreRead('players for management', playersSnapshot);
+                managedPlayers = new Map(playersSnapshot.docs.map(playerDoc => [playerDoc.id, {
+                    id: playerDoc.id,
+                    ...playerDoc.data()
+                }]));
+
+                select.innerHTML = '<option value="">בחר שחקן</option>';
+                [...managedPlayers.values()]
+                    .sort((a, b) => (a.playerName || '').localeCompare(b.playerName || '', 'he'))
+                    .forEach(player => {
+                        const option = document.createElement('option');
+                        option.value = player.id;
+                        option.textContent = `${player.playerName || 'ללא שם'}${player.active === false ? ' (לא פעיל)' : ''}`;
+                        select.appendChild(option);
+                    });
+                select.onchange = updateManagedPlayerDetails;
+                updateManagedPlayerDetails();
+            } catch (error) {
+                console.error('Error loading players for management:', error);
+                select.innerHTML = '<option value="">שגיאה בטעינת השחקנים</option>';
+            }
+        }
+
+        function getManagedPlayer() {
+            return managedPlayers.get(document.getElementById('managedPlayerSelect').value);
+        }
+
+        function updateManagedPlayerDetails() {
+            const player = getManagedPlayer();
+            const details = document.getElementById('managedPlayerDetails');
+            const saveButton = document.getElementById('savePlayerDetailsBtn');
+            const toggleButton = document.getElementById('togglePlayerActiveBtn');
+            const pointsButton = document.getElementById('adjustPlayerPointsBtn');
+            const deleteButton = document.getElementById('deletePlayerBtn');
+            if (!player) {
+                details.style.display = 'none';
+                document.getElementById('managedPlayerEmail').value = '';
+                document.getElementById('managedPlayerPassword').value = '';
+                document.getElementById('managedGroupHug').checked = false;
+                document.getElementById('managedGroupAdult').checked = false;
+                saveButton.disabled = true;
+                toggleButton.disabled = true;
+                pointsButton.disabled = true;
+                deleteButton.disabled = true;
+                return;
+            }
+
+            details.style.display = 'block';
+            document.getElementById('managedPlayerPoints').textContent = player.playerPoints || 0;
+            document.getElementById('managedPlayerStatus').textContent = player.active === false ? 'לא פעיל' : 'פעיל';
+            document.getElementById('managedPlayerEmail').value = player.playerEmail || '';
+            document.getElementById('managedPlayerPassword').value = player.playerPassword || '';
+            document.getElementById('managedGroupHug').checked = player.group_hug === true;
+            document.getElementById('managedGroupAdult').checked = player.group_adult === true;
+            saveButton.disabled = false;
+            toggleButton.textContent = player.active === false ? 'הפעל שחקן' : 'השבת שחקן';
+            toggleButton.disabled = false;
+            pointsButton.disabled = false;
+            deleteButton.disabled = false;
+        }
+
+        async function saveManagedPlayerDetails() {
+            const player = getManagedPlayer();
+            const email = document.getElementById('managedPlayerEmail').value.trim();
+            const password = document.getElementById('managedPlayerPassword').value.trim();
+            const groupHug = document.getElementById('managedGroupHug').checked;
+            const groupAdult = document.getElementById('managedGroupAdult').checked;
+
+            if (!player) return;
+            if (!validateEmail(email)) {
+                alert('יש להזין כתובת אימייל תקינה');
+                return;
+            }
+            if (password.length < 4) {
+                alert('סיסמה חייבת להכיל לפחות 4 תווים');
+                return;
+            }
+            if (!groupHug && !groupAdult) {
+                alert('יש לבחור לפחות קבוצה אחת');
+                return;
+            }
+
+            try {
+                await db.collection('Players2').doc(player.id).update({
+                    playerEmail: email,
+                    playerPassword: password,
+                    group_hug: groupHug,
+                    group_adult: groupAdult,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await updatePlayerRankingsStatus({
+                    lastUpdatedPlayers: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await loadManagedPlayers();
+                document.getElementById('managedPlayerSelect').value = player.id;
+                updateManagedPlayerDetails();
+                alert('פרטי השחקן עודכנו בהצלחה');
+            } catch (error) {
+                console.error('Error saving player details:', error);
+                alert(`שגיאה בעדכון פרטי השחקן: ${error.message}`);
+            }
+        }
+
+        async function toggleManagedPlayerActive() {
+            const player = getManagedPlayer();
+            if (!player) return;
+            try {
+                await db.collection('Players2').doc(player.id).update({
+                    active: player.active === false,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await updatePlayerRankingsStatus({
+                    lastUpdatedPlayers: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await loadManagedPlayers();
+                alert(player.active === false ? 'השחקן הופעל בהצלחה' : 'השחקן הושבת בהצלחה');
+            } catch (error) {
+                console.error('Error changing player status:', error);
+                alert(`שגיאה בשינוי סטטוס השחקן: ${error.message}`);
+            }
+        }
+
+        async function adjustManagedPlayerPoints() {
+            const player = getManagedPlayer();
+            const adjustment = Number(document.getElementById('pointsAdjustment').value);
+            if (!player || !Number.isInteger(adjustment) || adjustment === 0) {
+                alert('יש להזין מספר שלם שאינו אפס');
+                return;
+            }
+
+            const newPoints = Math.max(0, (Number(player.playerPoints) || 0) + adjustment);
+            try {
+                await db.collection('Players2').doc(player.id).update({
+                    playerPoints: newPoints,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await updatePlayerRankingsStatus({
+                    lastUpdatedPlayers: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                document.getElementById('pointsAdjustment').value = '';
+                await loadManagedPlayers();
+                alert(`נקודות השחקן עודכנו ל-${newPoints}`);
+            } catch (error) {
+                console.error('Error adjusting player points:', error);
+                alert(`שגיאה בעדכון נקודות השחקן: ${error.message}`);
+            }
+        }
+
+        async function deleteManagedPlayer() {
+            const player = getManagedPlayer();
+            if (!player) return;
+            if (!window.confirm(`למחוק את השחקן ${player.playerName}? פעולה זו אינה ניתנת לביטול.`)) return;
+
+            try {
+                await db.collection('Players2').doc(player.id).delete();
+                await updatePlayerRankingsStatus({
+                    lastUpdatedPlayers: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await loadManagedPlayers();
+                alert('השחקן נמחק בהצלחה');
+            } catch (error) {
+                console.error('Error deleting player:', error);
+                alert(`שגיאה במחיקת השחקן: ${error.message}`);
+            }
+        }
+
         // Form submission
         document.getElementById('playerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1074,7 +1325,6 @@
                 
                 if (result.success) {
                     console.log('Player added successfully with ID:', result.id);
-                    localStorage.removeItem('activePlayersCache');
                     
                     // Show success message
                     showSuccess();
