@@ -1180,10 +1180,13 @@
             collection,
             doc,
             getDoc,
+            getDocFromCache,
+            getDocFromServer,
             getDocs,
+            getDocsFromCache,
+            getDocsFromServer,
             initializeFirestore,
             limit,
-            onSnapshot,
             or,
             orderBy,
             persistentLocalCache,
@@ -1210,13 +1213,11 @@
         function logFirestoreRead(label, snapshot) {
             const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
             const source = snapshot.metadata?.fromCache ? 'cache' : 'server';
-            const changedCount = typeof snapshot.docChanges === 'function' ? snapshot.docChanges().length : documentCount;
-            console.log(`Firestore read - ${label}: ${documentCount} document(s), ${changedCount} changed, source: ${source}`);
+            const readType = source === 'cache' ? 'Cache read' : 'Firestore read';
+            console.log(`${readType} - ${label}: ${documentCount} document(s), source: ${source}`);
         }
 
         let isLoading = false;
-        let playersUnsubscribe = null;
-
         function showLoading() {
             const playersList = document.getElementById('playersList');
             const statsBar = document.getElementById('statsBar');
@@ -1304,7 +1305,7 @@
             
             // Generate player cards
             const playersHTML = players.map((player, index) => {
-                const rank = index + 1;
+                const rank = player.rank ?? index + 1;
                 const rankClass = getRankClass(rank);
                 const trophyMedal = getTrophyMedal(rank);
                 const points = player.points || 0;
@@ -1326,67 +1327,29 @@
             playersList.innerHTML = playersHTML;
         }
 
-        function loadPlayers() {
-            if (playersUnsubscribe) return;
+        async function loadPlayers() {
+            const statusRef = doc(db, 'Statistics', 'App_Status');
 
-            isLoading = true;
-            showLoading();
+            function displayRanking(statusSnapshot, source) {
+                const rankings = statusSnapshot?.data()?.playerRankings?.group_adult || [];
+                if (!rankings.length) return false;
+                console.log(`✅ Loaded ${rankings.length} בוגרים ranking players from ${source}`);
+                displayPlayers(rankings);
+                return true;
+            }
 
-            const playersQuery = query(
-                collection(db, 'Players2'),
-                where('active', '==', true),
-                where('group_adult', '==', true)
-            );
-
-            playersUnsubscribe = onSnapshot(playersQuery, async (playersSnapshot) => {
-                try {
-                logFirestoreRead('Players2', playersSnapshot);
-                
-                const players = [];
-                
-                playersSnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    
-                    const playerName = data.playerName;
-                    const playerPoints = data.playerPoints;
-                    
-                    // Only include players with valid names, active status, and relevant group
-                    const isActive = data.active === true;
-                    const isGroup = data.group_adult === true;
-                    if (playerName && playerName.trim() !== '' && isActive && isGroup) {
-                        players.push({
-                            id: doc.id,
-                            name: playerName.trim(),
-                            points: typeof playerPoints === 'number' ? playerPoints : 
-                                   typeof playerPoints === 'string' ? parseInt(playerPoints) || 0 : 0
-                        });
-                    }
-                });
-                
-                console.log('Processed players:', players);
-                
-                // Render players immediately; the statistics counter can arrive separately.
-                displayPlayers(players);
-
-                /*
-                const totalGamesDoc = await getDoc(doc(db, 'Statistics', 'Total_Games'));
-                logFirestoreRead('Statistics/Total_Games', totalGamesDoc);
-                const totalGames = totalGamesDoc.exists ? (totalGamesDoc.data().total_games || 0) : 0;
-                */
-                
-                } catch (error) {
-                    console.error('Error loading players:', error);
-                    showError(error.message || 'שגיאה לא ידועה');
-                } finally {
-                    isLoading = false;
-                    hideLoading();
-                }
-            }, (error) => {
-                console.error('Error listening for player changes:', error);
+            try {
+                isLoading = true;
+                const serverStatusSnapshot = await getDocFromServer(statusRef);
+                logFirestoreRead('App_Status ranking', serverStatusSnapshot);
+                if (!displayRanking(serverStatusSnapshot, 'App_Status')) showEmpty();
+            } catch (error) {
+                console.error('Error loading ranking snapshot:', error);
                 showError(error.message || 'שגיאה לא ידועה');
+            } finally {
                 isLoading = false;
                 hideLoading();
-            });
+            }
         }
 
         // Start immediately; this script runs after the ranking elements exist.

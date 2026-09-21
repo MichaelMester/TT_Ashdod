@@ -870,39 +870,41 @@
 
         let currentPlayer = null;
         let allPlayers = [];
-        let selectedOpponent = null;
         let opponentSetsValue = 0;
-        const ACTIVE_PLAYERS_CACHE_KEY = 'activePlayersCache';
 
         async function loadAllPlayers() {
             try {
-                const cachedPlayers = localStorage.getItem(ACTIVE_PLAYERS_CACHE_KEY);
-                if (cachedPlayers) {
-                    const cachedPlayerList = JSON.parse(cachedPlayers);
-                    allPlayers = cachedPlayerList
-                        .filter(player => player.id !== currentPlayer.id)
-                        .sort((a, b) => a.playerName.localeCompare(b.playerName, 'he'));
-                    logFirestoreRead('active players from cache', { size: allPlayers.length });
+                const statusSnapshot = await db.collection('Statistics').doc('App_Status').get();
+                logFirestoreRead('App_Status available players', statusSnapshot);
+
+                if (!statusSnapshot.exists) {
+                    allPlayers = [];
                     return;
                 }
 
-                const playersSnapshot = await db.collection('Players2')
-                    .where('active', '==', true)
-                    .get();
-                logFirestoreRead('active players', playersSnapshot);
+                const statusData = statusSnapshot.data();
+                const currentPlayerData = currentPlayer.data();
+                const rankingGroups = [];
+                if (currentPlayerData.group_hug === true) {
+                    rankingGroups.push(statusData.playerRankings?.group_hug || []);
+                }
+                if (currentPlayerData.group_adult === true) {
+                    rankingGroups.push(statusData.playerRankings?.group_adult || []);
+                }
 
-                const activePlayers = playersSnapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .map(player => ({
-                        id: player.id,
-                        playerName: player.playerName,
-                        playerPoints: player.playerPoints || 0,
-                        playerGames: player.playerGames || 0
-                    }));
-                localStorage.setItem(ACTIVE_PLAYERS_CACHE_KEY, JSON.stringify(activePlayers));
+                const playersById = new Map();
+                rankingGroups.flat().forEach(player => {
+                    if (player.id !== currentPlayer.id && !playersById.has(player.id)) {
+                        playersById.set(player.id, {
+                            id: player.id,
+                            playerName: player.name,
+                            playerPoints: player.points || 0,
+                            playerGames: player.playerGames || 0
+                        });
+                    }
+                });
 
-                allPlayers = activePlayers
-                    .filter(player => player.id !== currentPlayer.id)
+                allPlayers = [...playersById.values()]
                     .sort((a, b) => a.playerName.localeCompare(b.playerName, 'he'));
                 
             } catch (error) {
@@ -1104,6 +1106,33 @@
             return { games: 0, wins: 0 };
         }
 
+        async function updatePlayerRankingsStatus(statusUpdates = {}, playerUpdates = []) {
+            const statusRef = db.collection('Statistics').doc('App_Status');
+            const statusSnapshot = await statusRef.get();
+            logFirestoreRead('App_Status ranking update', statusSnapshot);
+            const statusData = statusSnapshot.exists ? statusSnapshot.data() : {};
+            const updatedPlayers = new Map(playerUpdates.map(player => [player.id, player]));
+            const rankingUpdatedAt = firebase.firestore.Timestamp.now();
+
+            const updateRanking = (groupName) => (statusData.playerRankings?.[groupName] || [])
+                .map(player => {
+                    const update = updatedPlayers.get(player.id);
+                    return update
+                        ? { ...player, points: update.points, lastUpdated: rankingUpdatedAt }
+                        : player;
+                })
+                .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
+                .map((player, index) => ({ ...player, rank: index + 1 }));
+
+            await statusRef.set({
+                ...statusUpdates,
+                playerRankings: {
+                    group_hug: updateRanking('group_hug'),
+                    group_adult: updateRanking('group_adult')
+                }
+            }, { merge: true });
+        }
+
         // Game form submission
         document.getElementById('gameForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1146,14 +1175,16 @@
                 // Update current player
                 await db.collection('Players2').doc(currentPlayer.id).update({
                     playerGames: (currentPlayerData.playerGames || 0) + 1,
-                    playerPoints: playerPoints + pointsCalc.playerGain
+                    playerPoints: playerPoints + pointsCalc.playerGain,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 // Update opponent
                 const newOpponentPoints = Math.max(1, opponentPoints + pointsCalc.opponentLoss);
                 await db.collection('Players2').doc(selectedOpponent.id).update({
                     playerGames: (freshOpponentData.playerGames || 0) + 1,
-                    playerPoints: newOpponentPoints
+                    playerPoints: newOpponentPoints,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 // Update opponent points in local array for dropdown display
@@ -1161,15 +1192,6 @@
                 if (opponentIndex !== -1) {
                     allPlayers[opponentIndex].playerPoints = newOpponentPoints;
                     allPlayers[opponentIndex].playerGames = (freshOpponentData.playerGames || 0) + 1;
-                    localStorage.setItem(ACTIVE_PLAYERS_CACHE_KEY, JSON.stringify([
-                        ...allPlayers,
-                        currentPlayer && currentPlayer.data ? {
-                            id: currentPlayer.id,
-                            playerName: currentPlayer.data().playerName,
-                            playerPoints: currentPlayer.data().playerPoints || 0,
-                            playerGames: currentPlayer.data().playerGames || 0
-                        } : null
-                    ].filter(Boolean)));
                 }
                 
                 // Update current player reference with fresh data
@@ -1239,9 +1261,12 @@
                     total_games: firebase.firestore.FieldValue.increment(1)
                 }, { merge: true });
 
-                await db.collection('Statistics').doc('App_Status').set({
+                await updatePlayerRankingsStatus({
                     lastUpdatedGames: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
+                }, [
+                    { id: currentPlayer.id, points: playerPoints + pointsCalc.playerGain },
+                    { id: selectedOpponent.id, points: newOpponentPoints }
+                ]);
                 
                 // Update player info display first
                 const newPlayerPoints = playerPoints + pointsCalc.playerGain;

@@ -1252,7 +1252,7 @@
         document.getElementById('rememberLogin').checked = Boolean(rememberedEmail && rememberedPassword);
 
         // Initialize Firebase
-        async function initializeFirebase() {
+        function initializeFirebase() {
             try {
                 console.log('🔥 Initializing Firebase...');
                 
@@ -1275,10 +1275,37 @@
         async function loadLastGames(forceRefresh = false) {
             try {
                 gamesQuery = gamesQuery || query(collection(db, 'games'), orderBy('date', 'desc'), limit(10));
-                let snapshot;
-                let dataSource;
+                let snapshot = null;
+                let dataSource = 'cache';
 
-                gamesStatus.textContent = '🔎 בודק עדכון משחקים...';
+                const displaySnapshot = (gamesSnapshot, source) => {
+                    const games = [];
+                    gamesSnapshot.forEach((gameDoc) => {
+                        games.push({
+                            id: gameDoc.id,
+                            ...gameDoc.data()
+                        });
+                    });
+
+                    console.log(`✅ Loaded ${games.length} games from ${source}`);
+                    displayGames(games);
+                };
+
+                try {
+                    snapshot = await getDocsFromCache(gamesQuery);
+                    logCacheRead('last games', snapshot);
+                    if (!snapshot.empty) {
+                        displaySnapshot(snapshot, 'cache');
+                        gamesStatus.textContent = '📦 משחקים מהמטמון';
+                    }
+                } catch (cacheError) {
+                    console.log('No cached games available');
+                }
+
+                gamesStatus.textContent = snapshot && !snapshot.empty
+                    ? '🔎 בודק אם יש משחקים חדשים...'
+                    : '🔎 טוען משחקים...';
+
                 let cachedStatusSnapshot = null;
                 let serverStatusSnapshot;
                 try {
@@ -1306,33 +1333,17 @@
                     timestampsMatch: Boolean(timestampsMatch)
                 });
 
-                if (!forceRefresh && timestampsMatch) {
-                    snapshot = await getDocsFromCache(gamesQuery);
-                    logCacheRead('last games', snapshot);
-                    dataSource = 'cache';
+                if (!forceRefresh && timestampsMatch && snapshot && !snapshot.empty) {
                     gamesStatus.textContent = '✅ המטמון מעודכן';
                 } else {
                     snapshot = await getDocsFromServer(gamesQuery);
                     logFirestoreRead('last games from server', snapshot);
                     dataSource = 'server';
+                    displaySnapshot(snapshot, dataSource);
                     gamesStatus.textContent = timestampsMatch
                         ? '✅ המשחקים המעודכנים נטענו'
                         : '🆕 משחקים חדשים נטענו';
                 }
-                
-                const games = [];
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    games.push({
-                        id: doc.id,
-                        ...data
-                    });
-                });
-
-                console.log(`✅ Loaded ${games.length} games from ${dataSource}`);
-                
-                // Display games
-                displayGames(games);
                 
             } catch (error) {
                 console.error('❌ Error loading games:', error);
@@ -1555,7 +1566,7 @@
 
             showMainContent();
             
-            const firebaseReady = await initializeFirebase();
+            const firebaseReady = initializeFirebase();
             
             if (firebaseReady) {
                 await loadLastGames();

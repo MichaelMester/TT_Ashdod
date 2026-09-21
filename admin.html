@@ -948,9 +948,9 @@
                 // Add the document to Players2 collection
                 const docRef = await db.collection('Players2').add(playerData);
                 console.log('Player added with ID:', docRef.id);
-                await db.collection('Statistics').doc('App_Status').set({
+                await updatePlayerRankingsStatus({
                     lastUpdatedPlayers: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
+                });
                 
                 return { success: true, id: docRef.id };
                 
@@ -959,6 +959,36 @@
                 return { success: false, error: error.message };
             }
         }
+
+            async function updatePlayerRankingsStatus(statusUpdates = {}) {
+                const playersSnapshot = await db.collection('Players2')
+                    .where('active', '==', true)
+                    .get();
+                logFirestoreRead('active players for ranking snapshot', playersSnapshot);
+
+                const players = playersSnapshot.docs.map(playerDoc => ({
+                    id: playerDoc.id,
+                    ...playerDoc.data()
+                }));
+                const buildRanking = (groupField) => players
+                    .filter(player => player[groupField] === true && player.playerName)
+                    .sort((a, b) => (Number(b.playerPoints) || 0) - (Number(a.playerPoints) || 0))
+                    .map((player, index) => ({
+                        id: player.id,
+                        name: player.playerName,
+                        points: Number(player.playerPoints) || 0,
+                        rank: index + 1,
+                        lastUpdated: player.lastUpdated || null
+                    }));
+
+                await db.collection('Statistics').doc('App_Status').set({
+                    ...statusUpdates,
+                    playerRankings: {
+                        group_hug: buildRanking('group_hug'),
+                        group_adult: buildRanking('group_adult')
+                    }
+                }, { merge: true });
+            }
 
         // Form submission
         document.getElementById('playerForm').addEventListener('submit', async (e) => {
@@ -1033,6 +1063,7 @@
                     playerPassword: playerPassword, // User selected or default password
                     playerPoints: 1, // Default points
                     playerGames: 0, // Auto field
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
                     group_hug: group_hug,
                     group_adult: group_adult,
                     active: true // Auto field
@@ -1302,10 +1333,6 @@
                 }, { merge: true });
                 console.log('Total games counter decremented');
 
-                await db.collection('Statistics').doc('App_Status').set({
-                    lastUpdatedGames: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-                
                 // Update Player 1
                 console.log('Step 3: Updating Player 1...');
                 const player1Query = await db.collection('Players2')
@@ -1346,7 +1373,8 @@
                 // Prepare Player 1 update object
                 const player1Updates = {
                     playerPoints: newPlayer1Points,
-                    playerGames: newPlayer1Games
+                    playerGames: newPlayer1Games,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
                 // Update opponent statistics for Player 1
@@ -1410,7 +1438,8 @@
                 // Prepare Player 2 update object
                 const player2Updates = {
                     playerPoints: newPlayer2Points,
-                    playerGames: newPlayer2Games
+                    playerGames: newPlayer2Games,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
                 // Update opponent statistics for Player 2
@@ -1433,6 +1462,10 @@
                 // Apply Player 2 updates
                 await player2Ref.update(player2Updates);
                 console.log('Player 2 updated successfully with:', player2Updates);
+
+                await updatePlayerRankingsStatus({
+                    lastUpdatedGames: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 
                 console.log('All updates completed successfully');
                 
