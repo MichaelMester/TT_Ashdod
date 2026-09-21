@@ -948,6 +948,9 @@
                 // Add the document to Players2 collection
                 const docRef = await db.collection('Players2').add(playerData);
                 console.log('Player added with ID:', docRef.id);
+                await db.collection('Statistics').doc('App_Status').set({
+                    lastUpdatedPlayers: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
                 
                 return { success: true, id: docRef.id };
                 
@@ -1298,6 +1301,10 @@
                     total_games: firebase.firestore.FieldValue.increment(-1)
                 }, { merge: true });
                 console.log('Total games counter decremented');
+
+                await db.collection('Statistics').doc('App_Status').set({
+                    lastUpdatedGames: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
                 
                 // Update Player 1
                 console.log('Step 3: Updating Player 1...');

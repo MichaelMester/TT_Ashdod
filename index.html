@@ -1117,9 +1117,12 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { 
             collection, 
+            doc,
             getDocs,
             getDocsFromCache,
             getDocsFromServer,
+            getDocFromCache,
+            getDocFromServer,
             initializeFirestore,
             persistentLocalCache,
             query,
@@ -1141,9 +1144,20 @@
         // Global variables
         let app = null;
         let db = null;
+        const appStatusRef = () => doc(db, 'Statistics', 'App_Status');
 
         function logFirestoreRead(label, snapshot) {
-            console.log(`Firestore read - ${label}: ${snapshot.size} document(s)`);
+            const documentCount = typeof snapshot.size === 'number'
+                ? snapshot.size
+                : (snapshot.exists() ? 1 : 0);
+            console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
+        }
+
+        function logCacheRead(label, snapshot) {
+            const documentCount = typeof snapshot.size === 'number'
+                ? snapshot.size
+                : (snapshot.exists() ? 1 : 0);
+            console.log(`Cache read - ${label}: ${documentCount} document(s)`);
         }
 
         // DOM elements
@@ -1260,66 +1274,50 @@
         // Load last 10 games
         async function loadLastGames(forceRefresh = false) {
             try {
-                console.log('📊 Loading last 10 games...');
-
                 gamesQuery = gamesQuery || query(collection(db, 'games'), orderBy('date', 'desc'), limit(10));
                 let snapshot;
                 let dataSource;
 
-                if (forceRefresh) {
-                    gamesStatus.textContent = '🔎 בודק משחקים חדשים...';
-                    let cachedGameIds = new Set();
-                    try {
-                        const cachedSnapshot = await getDocsFromCache(gamesQuery);
-                        cachedGameIds = new Set(cachedSnapshot.docs.map((gameDoc) => gameDoc.id));
-                    } catch (cacheError) {
-                        console.log('No cached games available for comparison');
-                    }
+                gamesStatus.textContent = '🔎 בודק עדכון משחקים...';
+                let cachedStatusSnapshot = null;
+                let serverStatusSnapshot;
+                try {
+                    cachedStatusSnapshot = await getDocFromCache(appStatusRef());
+                    logCacheRead('game update metadata', cachedStatusSnapshot);
+                } catch (cacheError) {
+                    console.log('No cached game update metadata available');
+                }
 
+                serverStatusSnapshot = await getDocFromServer(appStatusRef());
+                logFirestoreRead('game update metadata from server', serverStatusSnapshot);
+
+                const cachedUpdatedGames = cachedStatusSnapshot?.exists()
+                    ? cachedStatusSnapshot.data().lastUpdatedGames
+                    : null;
+                const serverUpdatedGames = serverStatusSnapshot.exists()
+                    ? serverStatusSnapshot.data().lastUpdatedGames
+                    : null;
+                const timestampsMatch = cachedUpdatedGames && serverUpdatedGames
+                    && cachedUpdatedGames.toMillis() === serverUpdatedGames.toMillis();
+
+                console.log('Game update timestamp comparison:', {
+                    cachedLastUpdatedGames: cachedUpdatedGames?.toDate?.()?.toISOString() || null,
+                    serverLastUpdatedGames: serverUpdatedGames?.toDate?.()?.toISOString() || null,
+                    timestampsMatch: Boolean(timestampsMatch)
+                });
+
+                if (!forceRefresh && timestampsMatch) {
+                    snapshot = await getDocsFromCache(gamesQuery);
+                    logCacheRead('last games', snapshot);
+                    dataSource = 'cache';
+                    gamesStatus.textContent = '✅ המטמון מעודכן';
+                } else {
                     snapshot = await getDocsFromServer(gamesQuery);
                     logFirestoreRead('last games from server', snapshot);
-                    const hasNewGames = snapshot.docs.some((gameDoc) => !cachedGameIds.has(gameDoc.id));
                     dataSource = 'server';
-                    gamesStatus.textContent = hasNewGames
-                        ? '🆕 משחקים חדשים נטענו'
-                        : '✅ לא נמצאו משחקים חדשים';
-                } else {
-                    let cachedGameIds = new Set();
-                    try {
-                        snapshot = await getDocsFromCache(gamesQuery);
-                        logFirestoreRead('last games from cache', snapshot);
-                        cachedGameIds = new Set(snapshot.docs.map((gameDoc) => gameDoc.id));
-                    } catch (cacheError) {
-                        console.log('No cached games available');
-                    }
-
-                    if (!snapshot || snapshot.empty) {
-                        gamesStatus.textContent = '🔎 טוען נתונים חדשים...';
-                    } else {
-                        dataSource = 'cache';
-                        gamesStatus.textContent = '📦 נתונים מהמטמון';
-                    }
-
-                    try {
-                        const serverSnapshot = await getDocsFromServer(gamesQuery);
-                        logFirestoreRead('last games from server', serverSnapshot);
-                        const hasNewGames = serverSnapshot.docs.some((gameDoc) => !cachedGameIds.has(gameDoc.id));
-                        if (hasNewGames || !snapshot || snapshot.empty) {
-                            snapshot = serverSnapshot;
-                            dataSource = 'server';
-                            gamesStatus.textContent = hasNewGames
-                                ? '🆕 משחקים חדשים נטענו'
-                                : '✅ המשחקים המעודכנים נטענו';
-                        } else {
-                            dataSource = 'cache';
-                            gamesStatus.textContent = '✅ המטמון מעודכן';
-                        }
-                    } catch (serverError) {
-                        if (!snapshot || snapshot.empty) {
-                            throw serverError;
-                        }
-                        console.log('Server refresh failed; keeping cached games');
-                    }
+                    gamesStatus.textContent = timestampsMatch
+                        ? '✅ המשחקים המעודכנים נטענו'
+                        : '🆕 משחקים חדשים נטענו';
                 }
                 
                 const games = [];
@@ -1549,8 +1547,7 @@
 
         // Initialize the application
         async function initApp() {
-            console.log('🚀 Starting Last 10 Games Application...');
-
+            
             if (!hasPlayerSession()) {
                 showSignIn();
                 return;
@@ -1561,7 +1558,6 @@
             const firebaseReady = await initializeFirebase();
             
             if (firebaseReady) {
-                console.log('✅ Firebase ready, loading games...');
                 await loadLastGames();
             } else {
                 console.error('❌ Firebase initialization failed');
