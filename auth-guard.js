@@ -24,8 +24,20 @@
 
     document.documentElement.style.visibility = 'hidden';
 
-    const email = sessionStorage.getItem('playerEmail');
-    const password = sessionStorage.getItem('playerPassword');
+    let email = sessionStorage.getItem('playerEmail');
+    let password = sessionStorage.getItem('playerPassword');
+
+    if (!email || !password) {
+        const rememberedEmail = localStorage.getItem('playerEmail');
+        const rememberedPassword = localStorage.getItem('playerPassword');
+
+        if (rememberedEmail && rememberedPassword) {
+            sessionStorage.setItem('playerEmail', rememberedEmail);
+            sessionStorage.setItem('playerPassword', rememberedPassword);
+            email = rememberedEmail;
+            password = rememberedPassword;
+        }
+    }
 
     function isAdminSession() {
         try {
