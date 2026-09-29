@@ -546,6 +546,45 @@
                 padding: 12px;
                 font-size: 1rem;
             }
+
+            .reads-table-wrapper {
+                overflow: hidden;
+            }
+
+            .reads-table {
+                min-width: 0;
+                table-layout: fixed;
+            }
+
+            .reads-table th,
+            .reads-table td {
+                padding: 10px 5px;
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
+
+            .reads-table th {
+                font-size: 0.78rem;
+                line-height: 1.25;
+            }
+
+            .reads-table th:first-child,
+            .reads-table td:first-child {
+                width: 38%;
+            }
+
+            .reads-table th:not(:first-child),
+            .reads-table td:not(:first-child) {
+                width: 31%;
+            }
+
+            .reads-table td {
+                font-size: 0.85rem;
+            }
+
+            .reads-table .metric-value {
+                font-size: 0.95rem;
+            }
         }
     </style>
     <script src="auth-guard.js"></script>
