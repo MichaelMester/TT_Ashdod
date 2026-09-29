@@ -1236,7 +1236,7 @@
                 }
                 
                 // Create game record in games collection
-                await db.collection('games').add({
+                const gameData = {
                     gameNumber: gameNumber,
                     date: Date.now(),
                     player1Amount: pointsCalc.playerGain,
@@ -1257,6 +1257,44 @@
                         wins: opponentHeadToHead.wins,
                         losses: opponentHeadToHead.games - opponentHeadToHead.wins + 1
                     }
+                };
+                const gameRef = await db.collection('games').add(gameData);
+
+                // Keep a small server-backed list for the last-games page.
+                const lastGamesRef = db.collection('Statistics').doc('Last_Games');
+                const initialLastGamesSnapshot = await lastGamesRef.get();
+                logFirestoreRead('Last_Games before update', initialLastGamesSnapshot);
+                let seedGames = [];
+                if (!initialLastGamesSnapshot.exists) {
+                    const recentGamesSnapshot = await db.collection('games')
+                        .orderBy('date', 'desc')
+                        .limit(10)
+                        .get();
+                    logFirestoreRead('existing games for Last_Games seed', recentGamesSnapshot);
+                    seedGames = recentGamesSnapshot.docs
+                        .map((existingGameDoc) => ({ id: existingGameDoc.id, ...existingGameDoc.data() }))
+                        .filter((existingGame) => existingGame.id !== gameRef.id);
+                }
+
+                await db.runTransaction(async (transaction) => {
+                    const lastGamesSnapshot = await transaction.get(lastGamesRef);
+                    let existingGames = lastGamesSnapshot.exists
+                        ? (lastGamesSnapshot.data().games || [])
+                        : seedGames;
+                    const updatedGames = [
+                        ...existingGames,
+                        { id: gameRef.id, ...gameData }
+                    ]
+                        .sort((firstGame, secondGame) => {
+                            const dateDifference = Number(secondGame.date || 0) - Number(firstGame.date || 0);
+                            return dateDifference || Number(secondGame.gameNumber || 0) - Number(firstGame.gameNumber || 0);
+                        })
+                        .slice(0, 10);
+
+                    transaction.set(lastGamesRef, {
+                        games: updatedGames,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 });
                 
                 // Increment total games counter in Statistics collection

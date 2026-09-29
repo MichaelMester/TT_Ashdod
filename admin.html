@@ -318,6 +318,56 @@
             justify-content: center;
             gap: 10px;
         }
+
+        .reads-table-wrapper {
+            overflow-x: auto;
+            border: 1px solid #dce5ef;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 4px 14px rgba(30, 60, 114, 0.08);
+        }
+
+        .reads-table {
+            width: 100%;
+            min-width: 420px;
+            border-collapse: collapse;
+            color: #2c3e50;
+        }
+
+        .reads-table th {
+            padding: 14px 16px;
+            background: #eef4fb;
+            color: #1e3c72;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .reads-table th:not(:first-child),
+        .reads-table td:not(:first-child) {
+            text-align: center;
+        }
+
+        .reads-table td {
+            padding: 14px 16px;
+            border-top: 1px solid #e9eef5;
+            font-size: 0.95rem;
+        }
+
+        .reads-table tbody tr:hover {
+            background: #f8fbff;
+        }
+
+        .reads-table .player-name {
+            font-weight: 600;
+        }
+
+        .reads-table .metric-value {
+            color: #1e3c72;
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
         
         .back-btn {
             background: #6c757d;
@@ -1006,12 +1056,28 @@
                     return;
                 }
 
-                list.innerHTML = entries.map(player => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
-                        <strong>${player.name || 'ללא שם'}</strong>
-                        <span>${Number(player.reads) || 0} מסמכים</span>
+                list.innerHTML = `
+                    <div class="reads-table-wrapper">
+                        <table class="reads-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">שחקן</th>
+                                    <th scope="col">מסמכים שנקראו</th>
+                                    <th scope="col">כניסות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${entries.map(player => `
+                                    <tr>
+                                        <td class="player-name">${player.name || 'ללא שם'}</td>
+                                        <td class="metric-value">${Number(player.reads) || 0}</td>
+                                        <td class="metric-value">${Number(player.logins) || 0}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
-                `).join('');
+                `;
                 list.style.display = 'block';
             } catch (error) {
                 console.error('Error loading Reads_Count:', error);
@@ -1640,6 +1706,19 @@
                 console.log('Step 2: Deleting game document...');
                 await db.collection('games').doc(gameId).delete();
                 console.log('Game document deleted successfully');
+
+                // Remove the deleted game from the server-maintained last-games list.
+                const lastGamesRef = db.collection('Statistics').doc('Last_Games');
+                await db.runTransaction(async (transaction) => {
+                    const lastGamesSnapshot = await transaction.get(lastGamesRef);
+                    if (!lastGamesSnapshot.exists) return;
+
+                    const lastGames = lastGamesSnapshot.data().games || [];
+                    transaction.set(lastGamesRef, {
+                        games: lastGames.filter((game) => game.id !== gameId),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                });
                 
                 // Decrement total games counter in Statistics collection
                 const totalGamesRef = db.collection('Statistics').doc('Total_Games');
