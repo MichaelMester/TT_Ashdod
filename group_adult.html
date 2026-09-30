@@ -1193,6 +1193,8 @@
             orderBy,
             persistentLocalCache,
             query,
+            serverTimestamp,
+            setDoc,
             where
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
@@ -1210,6 +1212,15 @@
         const app = initializeApp(firebaseConfig);
         const db = initializeFirestore(app, {
             localCache: persistentLocalCache()
+        });
+
+        window.configureFirebaseUsage?.({
+            read: async () => {
+                const snapshot = await getDoc(doc(db, 'Statistics', 'Reads_Count'));
+                return snapshot.exists() ? (snapshot.data().players || {}) : {};
+            },
+            write: players => setDoc(doc(db, 'Statistics', 'Reads_Count'), { players }, { merge: true }),
+            serverTimestamp: () => serverTimestamp()
         });
 
         function logFirestoreRead(label, snapshot) {
@@ -1381,6 +1392,13 @@
 
         // Start immediately; this script runs after the ranking elements exist.
         restorePlayerSession()
+            .then(async () => {
+                const playerSession = JSON.parse(sessionStorage.getItem('playerSession') || 'null');
+                await window.recordFirebaseConnection?.({
+                    id: playerSession?.id,
+                    name: playerSession?.data?.playerName || ''
+                });
+            })
             .catch(error => console.error('Error restoring player session:', error))
             .finally(() => loadPlayers());
 

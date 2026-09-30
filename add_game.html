@@ -851,6 +851,15 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        window.configureFirebaseUsage?.({
+            read: async () => {
+                const snapshot = await db.collection('Statistics').doc('Reads_Count').get();
+                return snapshot.exists ? (snapshot.data().players || {}) : {};
+            },
+            write: players => db.collection('Statistics').doc('Reads_Count').set({ players }, { merge: true }),
+            serverTimestamp: () => firebase.firestore.FieldValue.serverTimestamp()
+        });
+
         function logFirestoreRead(label, snapshot) {
             const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
             console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
@@ -1450,6 +1459,11 @@
         window.addEventListener('load', async () => {
             try {
                 await restorePlayerSession();
+                const playerSession = JSON.parse(sessionStorage.getItem('playerSession') || 'null');
+                await window.recordFirebaseConnection?.({
+                    id: playerSession?.id,
+                    name: playerSession?.data?.playerName || ''
+                });
                 
             } catch (error) {
                 console.error('Firebase connection error:', error);

@@ -1170,7 +1170,9 @@
             localStorage.removeItem('firestoreReadSession');
         }
 
-        async function recordPlayerLogin(player) {
+        async function recordFirebaseConnection(player) {
+            await flushPreviousReadSession();
+
             const readsRef = doc(db, 'Statistics', 'Reads_Count');
             await runTransaction(db, async (transaction) => {
                 const readsSnapshot = await transaction.get(readsRef);
@@ -1180,12 +1182,13 @@
                 players[player.id] = {
                     ...existingPlayer,
                     name: player.name || existingPlayer.name || '',
-                    logins: (Number(existingPlayer.logins) || 0) + 1,
-                    lastLoginAt: serverTimestamp(),
+                    connections: (Number(existingPlayer.connections) || 0) + 1,
+                    lastConnectedAt: serverTimestamp(),
                     lastSeenAt: serverTimestamp()
                 };
                 transaction.set(readsRef, { players }, { merge: true });
             });
+            window.startFirestoreReadSession?.(player);
         }
 
         async function ensurePlayerSession() {
@@ -1216,13 +1219,6 @@
                 id: playerDocument.id,
                 name: playerDocument.data().playerName
             };
-            await flushPreviousReadSession();
-
-            if (sessionStorage.getItem('playerLoginRecorded') !== player.id) {
-                await recordPlayerLogin(player);
-                sessionStorage.setItem('playerLoginRecorded', player.id);
-            }
-
             sessionStorage.setItem('playerSession', JSON.stringify({
                 id: playerDocument.id,
                 data: playerDocument.data()
@@ -1284,12 +1280,6 @@
                 }
 
                 const playerDocument = playersSnapshot.docs[0];
-                await flushPreviousReadSession();
-                await recordPlayerLogin({
-                    id: playerDocument.id,
-                    name: playerDocument.data().playerName
-                });
-                sessionStorage.setItem('playerLoginRecorded', playerDocument.id);
                 sessionStorage.setItem('playerEmail', email);
                 sessionStorage.setItem('playerPassword', password);
                 sessionStorage.setItem('playerSession', JSON.stringify({
@@ -1297,10 +1287,6 @@
                     data: playerDocument.data()
                 }));
                 window.refreshAdminNavigation?.();
-                window.startFirestoreReadSession?.({
-                    id: playerDocument.id,
-                    name: playerDocument.data().playerName
-                });
 
                 if (rememberLogin) {
                     localStorage.setItem('playerEmail', email);
@@ -1589,6 +1575,11 @@
                     showSignIn();
                     return;
                 }
+                const playerSession = JSON.parse(sessionStorage.getItem('playerSession'));
+                await recordFirebaseConnection({
+                    id: playerSession.id,
+                    name: playerSession.data?.playerName || ''
+                });
                 showMainContent();
                 await loadLastGames();
             } else {

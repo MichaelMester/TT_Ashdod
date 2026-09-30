@@ -855,7 +855,7 @@
                         ⚙️ ניהול שחקנים
                     </button>
                     <button class="btn btn-primary nav-btn" onclick="showReadsSection()">
-                        📖 ספירת קריאות
+                        📖 מונה קריאות וחיבורי Firebase
                     </button>
                     <button class="btn btn-success nav-btn" onclick="showGamesSection()">
                         🎮 ניהול משחקים
@@ -1000,7 +1000,7 @@
                 </button>
 
                 <div class="form-title">
-                    📖 ספירת קריאות לפי שחקן
+                    📖 קריאות מסמכים וחיבורי Firebase לפי שחקן
                 </div>
 
                 <div id="readsCountLoading" style="text-align: center; padding: 20px;">טוען נתונים...</div>
@@ -1070,6 +1070,21 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        window.configureFirebaseUsage?.({
+            read: async () => {
+                const snapshot = await db.collection('Statistics').doc('Reads_Count').get();
+                return snapshot.exists ? (snapshot.data().players || {}) : {};
+            },
+            write: players => db.collection('Statistics').doc('Reads_Count').set({ players }, { merge: true }),
+            serverTimestamp: () => firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        const adminPlayerSession = JSON.parse(sessionStorage.getItem('playerSession') || 'null');
+        window.recordFirebaseConnection?.({
+            id: adminPlayerSession?.id,
+            name: adminPlayerSession?.data?.playerName || ''
+        }).catch(error => console.error('Error recording Firebase connection:', error));
+
         function logFirestoreRead(label, snapshot) {
             const documentCount = typeof snapshot.size === 'number' ? snapshot.size : (snapshot.exists ? 1 : 0);
             console.log(`Firestore read - ${label}: ${documentCount} document(s)`);
@@ -1102,7 +1117,7 @@
                                 <tr>
                                     <th scope="col">שחקן</th>
                                     <th scope="col">מסמכים שנקראו</th>
-                                    <th scope="col">כניסות</th>
+                                    <th scope="col">חיבורי Firebase</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1110,7 +1125,7 @@
                                     <tr>
                                         <td class="player-name">${player.name || 'ללא שם'}</td>
                                         <td class="metric-value">${Number(player.reads) || 0}</td>
-                                        <td class="metric-value">${Number(player.logins) || 0}</td>
+                                        <td class="metric-value">${Number(player.connections) || 0}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>

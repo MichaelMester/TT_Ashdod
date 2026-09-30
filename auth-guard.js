@@ -20,6 +20,45 @@
         }));
     };
 
+    let firebaseUsageAdapter = null;
+
+    window.configureFirebaseUsage = function (adapter) {
+        firebaseUsageAdapter = adapter;
+    };
+
+    window.recordFirebaseConnection = async function (player) {
+        if (!firebaseUsageAdapter || !player?.id) return;
+
+        const session = JSON.parse(localStorage.getItem(READ_SESSION_KEY) || 'null');
+        const players = await firebaseUsageAdapter.read();
+        const existingPlayer = players[player.id] || {};
+        const pendingReads = session?.playerId && Number(session.reads) > 0
+            ? Number(session.reads)
+            : 0;
+        const updatedPlayer = {
+            ...existingPlayer,
+            name: player.name || existingPlayer.name || '',
+            reads: (Number(existingPlayer.reads) || 0) + (session?.playerId === player.id ? pendingReads : 0),
+            connections: (Number(existingPlayer.connections) || 0) + 1,
+            lastConnectedAt: firebaseUsageAdapter.serverTimestamp(),
+            lastSeenAt: firebaseUsageAdapter.serverTimestamp()
+        };
+
+        if (session?.playerId && pendingReads > 0 && session.playerId !== player.id) {
+            players[session.playerId] = {
+                ...players[session.playerId],
+                name: session.playerName || players[session.playerId]?.name || '',
+                reads: (Number(players[session.playerId]?.reads) || 0) + pendingReads,
+                lastSeenAt: firebaseUsageAdapter.serverTimestamp()
+            };
+        }
+
+        players[player.id] = updatedPlayer;
+        await firebaseUsageAdapter.write(players);
+        localStorage.removeItem(READ_SESSION_KEY);
+        window.startFirestoreReadSession(player);
+    };
+
     const pageName = window.location.pathname.split('/').pop() || 'index.html';
 
     document.documentElement.style.visibility = 'hidden';
