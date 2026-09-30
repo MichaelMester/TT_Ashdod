@@ -91,7 +91,7 @@
         }
     }
 
-    function hideAdminNavigationForPlayers() {
+    window.refreshAdminNavigation = function () {
         let playerSession = null;
 
         try {
@@ -100,19 +100,12 @@
             console.warn('Could not read player session:', error);
         }
 
-        if (playerSession?.data?.admin === true) {
-            return;
-        }
-
         document.querySelectorAll('a[href="admin.html"]').forEach((adminLink) => {
             const menuItem = adminLink.closest('li');
-            if (menuItem) {
-                menuItem.remove();
-            } else {
-                adminLink.remove();
-            }
+            const navigationItem = menuItem || adminLink;
+            navigationItem.style.display = playerSession?.data?.admin === true ? '' : 'none';
         });
-    }
+    };
 
     if (!email || !password) {
         if (pageName === 'index.html') {
@@ -151,7 +144,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.style.visibility = 'visible';
-        hideAdminNavigationForPlayers();
+        window.refreshAdminNavigation();
         addSignOutToNavigation();
     }, { once: true });
 })();

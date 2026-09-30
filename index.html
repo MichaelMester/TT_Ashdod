@@ -1227,6 +1227,7 @@
                 id: playerDocument.id,
                 data: playerDocument.data()
             }));
+            window.refreshAdminNavigation?.();
             window.startFirestoreReadSession?.(player);
             return true;
         }
@@ -1295,6 +1296,7 @@
                     id: playerDocument.id,
                     data: playerDocument.data()
                 }));
+                window.refreshAdminNavigation?.();
                 window.startFirestoreReadSession?.({
                     id: playerDocument.id,
                     name: playerDocument.data().playerName

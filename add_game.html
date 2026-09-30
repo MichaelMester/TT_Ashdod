@@ -1441,6 +1441,7 @@
                 id: currentPlayer.id,
                 data: currentPlayer.data()
             }));
+            window.refreshAdminNavigation?.();
             showGameSection(currentPlayer.data());
             await loadAllPlayers();
         }
