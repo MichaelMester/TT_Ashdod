@@ -1123,6 +1123,7 @@
             getDocs,
             getDocFromServer,
             setDoc,
+            serverTimestamp,
             getFirestore,
             runTransaction,
             query,
@@ -1160,8 +1161,10 @@
             const existingPlayers = readsSnapshot.exists() ? (readsSnapshot.data().players || {}) : {};
             const existingPlayer = existingPlayers[session.playerId] || {};
             existingPlayers[session.playerId] = {
+                ...existingPlayer,
                 name: session.playerName || existingPlayer.name || '',
-                reads: (Number(existingPlayer.reads) || 0) + Number(session.reads)
+                reads: (Number(existingPlayer.reads) || 0) + Number(session.reads),
+                lastSeenAt: serverTimestamp()
             };
             await setDoc(readsRef, { players: existingPlayers }, { merge: true });
             localStorage.removeItem('firestoreReadSession');
@@ -1177,10 +1180,55 @@
                 players[player.id] = {
                     ...existingPlayer,
                     name: player.name || existingPlayer.name || '',
-                    logins: (Number(existingPlayer.logins) || 0) + 1
+                    logins: (Number(existingPlayer.logins) || 0) + 1,
+                    lastLoginAt: serverTimestamp(),
+                    lastSeenAt: serverTimestamp()
                 };
                 transaction.set(readsRef, { players }, { merge: true });
             });
+        }
+
+        async function ensurePlayerSession() {
+            const existingSession = JSON.parse(sessionStorage.getItem('playerSession') || 'null');
+            if (existingSession?.id) return true;
+
+            const email = sessionStorage.getItem('playerEmail');
+            const password = sessionStorage.getItem('playerPassword');
+            if (!email || !password) return false;
+
+            const playersSnapshot = await getDocs(query(
+                collection(db, 'Players2'),
+                where('playerEmail', '==', email),
+                where('playerPassword', '==', password)
+            ));
+            logFirestoreRead('restore saved player login', playersSnapshot);
+
+            if (playersSnapshot.empty) {
+                sessionStorage.removeItem('playerEmail');
+                sessionStorage.removeItem('playerPassword');
+                localStorage.removeItem('playerEmail');
+                localStorage.removeItem('playerPassword');
+                return false;
+            }
+
+            const playerDocument = playersSnapshot.docs[0];
+            const player = {
+                id: playerDocument.id,
+                name: playerDocument.data().playerName
+            };
+            await flushPreviousReadSession();
+
+            if (sessionStorage.getItem('playerLoginRecorded') !== player.id) {
+                await recordPlayerLogin(player);
+                sessionStorage.setItem('playerLoginRecorded', player.id);
+            }
+
+            sessionStorage.setItem('playerSession', JSON.stringify({
+                id: playerDocument.id,
+                data: playerDocument.data()
+            }));
+            window.startFirestoreReadSession?.(player);
+            return true;
         }
 
         // DOM elements
@@ -1240,6 +1288,7 @@
                     id: playerDocument.id,
                     name: playerDocument.data().playerName
                 });
+                sessionStorage.setItem('playerLoginRecorded', playerDocument.id);
                 sessionStorage.setItem('playerEmail', email);
                 sessionStorage.setItem('playerPassword', password);
                 sessionStorage.setItem('playerSession', JSON.stringify({
@@ -1530,11 +1579,15 @@
                 return;
             }
 
-            showMainContent();
-            
             const firebaseReady = initializeFirebase();
             
             if (firebaseReady) {
+                const sessionReady = await ensurePlayerSession();
+                if (!sessionReady) {
+                    showSignIn();
+                    return;
+                }
+                showMainContent();
                 await loadLastGames();
             } else {
                 console.error('❌ Firebase initialization failed');
