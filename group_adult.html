@@ -1220,6 +1220,30 @@
             window.recordFirestoreRead?.(snapshot);
         }
 
+        async function restorePlayerSession() {
+            if (sessionStorage.getItem('playerSession')) return;
+
+            const email = sessionStorage.getItem('playerEmail');
+            const password = sessionStorage.getItem('playerPassword');
+            if (!email || !password) return;
+
+            const playersSnapshot = await getDocs(query(
+                collection(db, 'Players2'),
+                where('playerEmail', '==', email),
+                where('playerPassword', '==', password)
+            ));
+            logFirestoreRead('restore saved player login', playersSnapshot);
+
+            if (playersSnapshot.empty) return;
+
+            const playerDocument = playersSnapshot.docs[0];
+            sessionStorage.setItem('playerSession', JSON.stringify({
+                id: playerDocument.id,
+                data: playerDocument.data()
+            }));
+            window.refreshAdminNavigation?.();
+        }
+
         let isLoading = false;
         function showLoading() {
             const playersList = document.getElementById('playersList');
@@ -1356,7 +1380,9 @@
         }
 
         // Start immediately; this script runs after the ranking elements exist.
-        loadPlayers();
+        restorePlayerSession()
+            .catch(error => console.error('Error restoring player session:', error))
+            .finally(() => loadPlayers());
 
         // Add pull-to-refresh functionality for mobile
         let startY = 0;
